@@ -1,0 +1,119 @@
+package com.anatdx.yukifb.ui
+
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.expressiveLightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
+import com.anatdx.yukifb.backend.FileBrowserCapabilities
+import com.anatdx.yukifb.model.EntryId
+import com.anatdx.yukifb.model.FileEntry
+import com.anatdx.yukifb.model.FileEntryType
+import com.anatdx.yukifb.model.UnixMetadata
+import com.anatdx.yukifb.state.FileBrowserUiState
+
+@Preview(
+    name = "Ramdisk root",
+    showBackground = true,
+    widthDp = 390,
+    heightDp = 800,
+)
+@Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun FileBrowserPreview() {
+    val rootId = EntryId("root")
+    MaterialExpressiveTheme(
+        colorScheme = expressiveLightColorScheme(),
+        motionScheme = MotionScheme.expressive(),
+    ) {
+        FileBrowser(
+            state = FileBrowserUiState(
+                currentDirectory = entry(
+                    id = rootId,
+                    parentId = null,
+                    name = "ramdisk",
+                    type = FileEntryType.DIRECTORY,
+                ),
+                entries = listOf(
+                    entry(
+                        id = EntryId("overlay"),
+                        parentId = rootId,
+                        name = "overlay.d",
+                        type = FileEntryType.DIRECTORY,
+                        permissions = 0b111_101_101,
+                    ),
+                    entry(
+                        id = EntryId("init"),
+                        parentId = rootId,
+                        name = "init",
+                        type = FileEntryType.REGULAR_FILE,
+                        size = 2_361_344,
+                        permissions = 0b111_101_000,
+                    ),
+                    entry(
+                        id = EntryId("init.rc"),
+                        parentId = rootId,
+                        name = "init.rc",
+                        type = FileEntryType.REGULAR_FILE,
+                        size = 19_286,
+                        permissions = 0b110_100_100,
+                    ),
+                    entry(
+                        id = EntryId("bin"),
+                        parentId = rootId,
+                        name = "bin",
+                        type = FileEntryType.SYMBOLIC_LINK,
+                        linkTarget = "/system/bin",
+                        permissions = 0b111_111_111,
+                    ),
+                    entry(
+                        id = EntryId("kernelsu"),
+                        parentId = rootId,
+                        name = "kernelsu.ko",
+                        type = FileEntryType.REGULAR_FILE,
+                        size = 1_048_576,
+                        permissions = 0b110_100_100,
+                    ),
+                ),
+                capabilities = FileBrowserCapabilities(
+                    canCreateEntries = true,
+                    canRename = true,
+                    canDelete = true,
+                    canCopy = true,
+                    canMove = true,
+                    canEditUnixMetadata = true,
+                    canCreateSymbolicLinks = true,
+                    canCreateHardLinks = true,
+                ),
+            ),
+            onAction = {},
+            onOpenFile = {},
+            onImport = {},
+        )
+    }
+}
+
+private fun entry(
+    id: EntryId,
+    parentId: EntryId?,
+    name: String,
+    type: FileEntryType,
+    size: Long? = null,
+    permissions: Int? = null,
+    linkTarget: String? = null,
+): FileEntry = FileEntry(
+    id = id,
+    parentId = parentId,
+    name = name,
+    type = type,
+    size = size,
+    unixMetadata = permissions?.let {
+        UnixMetadata(
+            permissions = it,
+            uid = 0,
+            gid = 0,
+        )
+    },
+    linkTarget = linkTarget,
+)
