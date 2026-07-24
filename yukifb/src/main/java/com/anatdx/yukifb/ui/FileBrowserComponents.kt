@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Link
@@ -94,6 +95,7 @@ import com.anatdx.yukifb.state.visibleEntries
 internal fun FileBrowserTopBar(
     state: FileBrowserUiState,
     onAction: (FileBrowserAction) -> Unit,
+    onClose: (() -> Unit)?,
     topBarActions: @Composable RowScope.() -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -142,15 +144,29 @@ internal fun FileBrowserTopBar(
             )
         },
         navigationIcon = {
-            if (state.breadcrumbs.size > 1) {
-                IconButton(
-                    enabled = !state.isBusy,
-                    onClick = { onAction(FileBrowserAction.NavigateUp) },
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.yukifb_up),
-                    )
+            when {
+                state.breadcrumbs.size > 1 -> {
+                    IconButton(
+                        enabled = !state.isBusy,
+                        onClick = { onAction(FileBrowserAction.NavigateUp) },
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.yukifb_up),
+                        )
+                    }
+                }
+
+                onClose != null -> {
+                    IconButton(
+                        enabled = !state.isBusy,
+                        onClick = onClose,
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.yukifb_close),
+                        )
+                    }
                 }
             }
         },
@@ -562,6 +578,7 @@ internal fun SelectionBottomBar(
     onCopy: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
+    onExport: ((FileEntry) -> Unit)?,
     onRename: (FileEntry) -> Unit,
     onProperties: () -> Unit,
     onMetadata: () -> Unit,
@@ -597,6 +614,22 @@ internal fun SelectionBottomBar(
                 label = stringResource(R.string.yukifb_delete),
                 enabled = !state.isBusy,
                 onClick = onDelete,
+            )
+        }
+        val exportEntry = selectedEntries.singleOrNull()?.takeIf {
+            it.type == FileEntryType.REGULAR_FILE
+        }
+        if (
+            onExport != null &&
+            state.capabilities.canAccessContent &&
+            exportEntry != null
+        ) {
+            BottomAction(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Download,
+                label = stringResource(R.string.yukifb_export),
+                enabled = !state.isBusy,
+                onClick = { onExport(exportEntry) },
             )
         }
         Box(modifier = Modifier.weight(1f)) {

@@ -7,7 +7,17 @@ single-column browser and supplies reusable navigation, selection, clipboard, an
 file-operation state. Your backend decides what an entry actually is: an in-memory
 CPIO node, a ZIP member, a root filesystem path, or something else.
 
-The project is currently an early `0.1.0-SNAPSHOT`.
+The project is currently an early `0.1.0`.
+
+## Installation
+
+YukiFB is published on Maven Central:
+
+```kotlin
+dependencies {
+    implementation("com.anatdx:yukifb:0.1.0")
+}
+```
 
 ## Design
 

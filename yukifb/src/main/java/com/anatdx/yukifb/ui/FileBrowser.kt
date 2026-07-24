@@ -22,8 +22,10 @@ import com.anatdx.yukifb.state.FileBrowserUiState
 /**
  * Renders a file browser bound to [controller].
  *
- * Opening and importing files remain host concerns and are reported through
- * [onOpenFile] and [onImport].
+ * Opening, importing, and exporting files remain host concerns and are reported
+ * through [onOpenFile], [onImport], and [onExport]. When [onClose] is supplied,
+ * the root directory shows a host-level back action while child directories
+ * continue to navigate up.
  */
 @Composable
 fun FileBrowser(
@@ -31,6 +33,8 @@ fun FileBrowser(
     onOpenFile: (FileEntry) -> Unit,
     modifier: Modifier = Modifier,
     onImport: ((FileEntry) -> Unit)? = null,
+    onExport: ((FileEntry) -> Unit)? = null,
+    onClose: (() -> Unit)? = null,
     options: FileBrowserOptions = FileBrowserDefaults.options,
     topBarActions: @Composable RowScope.() -> Unit = {},
 ) {
@@ -41,6 +45,8 @@ fun FileBrowser(
         onOpenFile = onOpenFile,
         modifier = modifier,
         onImport = onImport,
+        onExport = onExport,
+        onClose = onClose,
         options = options,
         topBarActions = topBarActions,
     )
@@ -59,6 +65,8 @@ fun FileBrowser(
     onOpenFile: (FileEntry) -> Unit,
     modifier: Modifier = Modifier,
     onImport: ((FileEntry) -> Unit)? = null,
+    onExport: ((FileEntry) -> Unit)? = null,
+    onClose: (() -> Unit)? = null,
     options: FileBrowserOptions = FileBrowserDefaults.options,
     topBarActions: @Composable RowScope.() -> Unit = {},
 ) {
@@ -85,6 +93,7 @@ fun FileBrowser(
             FileBrowserTopBar(
                 state = state,
                 onAction = onAction,
+                onClose = onClose,
                 topBarActions = topBarActions,
             )
         },
@@ -96,6 +105,7 @@ fun FileBrowser(
                     onCopy = { onAction(FileBrowserAction.CopySelected) },
                     onMove = { onAction(FileBrowserAction.MoveSelected) },
                     onDelete = { dialog = BrowserDialog.DeleteSelection },
+                    onExport = onExport,
                     onRename = { entry -> dialog = BrowserDialog.Rename(entry) },
                     onProperties = {
                         dialog = BrowserDialog.Properties(selectedEntries)

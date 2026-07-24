@@ -1,11 +1,13 @@
+import org.gradle.plugins.signing.SigningExtension
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.compose.compiler)
-    `maven-publish`
+    alias(libs.plugins.maven.publish)
 }
 
 group = "com.anatdx"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.0"
 
 android {
     namespace = "com.anatdx.yukifb"
@@ -27,11 +29,6 @@ android {
 
     resourcePrefix = "yukifb_"
 
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-        }
-    }
 }
 
 dependencies {
@@ -49,23 +46,44 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
 }
 
-afterEvaluate {
-    publishing {
-        publications {
-            register<MavenPublication>("release") {
-                from(components["release"])
-                artifactId = "yukifb"
-                pom {
-                    name = "YukiFB"
-                    description = "A backend-agnostic file browser UI for Jetpack Compose."
-                    licenses {
-                        license {
-                            name = "The Apache License, Version 2.0"
-                            url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-                        }
-                    }
-                }
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+
+    coordinates(
+        groupId = "com.anatdx",
+        artifactId = "yukifb",
+        version = "0.1.0",
+    )
+
+    pom {
+        name = "YukiFB"
+        description = "A backend-agnostic file browser UI for Jetpack Compose."
+        inceptionYear = "2026"
+        url = "https://github.com/Anatdx/YukiFB"
+        licenses {
+            license {
+                name = "The Apache License, Version 2.0"
+                url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                distribution = "https://www.apache.org/licenses/LICENSE-2.0.txt"
             }
         }
+        developers {
+            developer {
+                id = "anatdx"
+                name = "Anan"
+                email = "an@anatdx.com"
+                url = "https://github.com/Anatdx"
+            }
+        }
+        scm {
+            url = "https://github.com/Anatdx/YukiFB"
+            connection = "scm:git:git://github.com/Anatdx/YukiFB.git"
+            developerConnection = "scm:git:ssh://git@github.com/Anatdx/YukiFB.git"
+        }
     }
+}
+
+extensions.configure<SigningExtension> {
+    useGpgCmd()
 }

@@ -4,6 +4,7 @@ compose-bom = "2026.06.01"
 coroutines = "1.11.0"
 kotlin = "2.4.10"
 material3 = "1.5.0-alpha24"
+maven-publish = "0.37.0"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
@@ -20,3 +21,4 @@ coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", ve
 [plugins]
 android-library = { id = "com.android.library", version.ref = "agp" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
