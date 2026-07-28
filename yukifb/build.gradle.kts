@@ -44,6 +44,9 @@ dependencies {
     implementation(libs.coroutines.android)
 
     debugImplementation(libs.compose.ui.tooling)
+
+    testImplementation(libs.coroutines.test)
+    testImplementation(libs.kotlin.test)
 }
 
 mavenPublishing {

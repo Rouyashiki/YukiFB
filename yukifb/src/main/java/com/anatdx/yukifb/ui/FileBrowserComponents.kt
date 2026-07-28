@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.UploadFile
@@ -60,6 +61,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -73,6 +75,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -85,10 +89,12 @@ import com.anatdx.yukifb.model.FileEntryType
 import com.anatdx.yukifb.state.ClipboardMode
 import com.anatdx.yukifb.state.FileBrowserAction
 import com.anatdx.yukifb.state.FileBrowserClipboard
+import com.anatdx.yukifb.state.FileBrowserSearchResult
 import com.anatdx.yukifb.state.FileBrowserUiState
 import com.anatdx.yukifb.state.FileSortDirection
 import com.anatdx.yukifb.state.FileSortField
 import com.anatdx.yukifb.state.visibleEntries
+import com.anatdx.yukifb.state.visibleSearchResults
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -135,6 +141,18 @@ internal fun FileBrowserTopBar(
         return
     }
 
+    if (state.search != null) {
+        SearchTopBar(
+            query = state.search.query,
+            enabled = !state.isBusy,
+            onQueryChange = {
+                onAction(FileBrowserAction.UpdateSearchQuery(it))
+            },
+            onClose = { onAction(FileBrowserAction.StopSearch) },
+        )
+        return
+    }
+
     TopAppBar(
         title = {
             Text(
@@ -173,6 +191,15 @@ internal fun FileBrowserTopBar(
         actions = {
             topBarActions()
             IconButton(
+                enabled = !state.isBusy && !state.isLoading,
+                onClick = { onAction(FileBrowserAction.StartSearch) },
+            ) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = stringResource(R.string.yukifb_search),
+                )
+            }
+            IconButton(
                 enabled = !state.isBusy,
                 onClick = { onAction(FileBrowserAction.Refresh) },
             ) {
@@ -196,6 +223,58 @@ internal fun FileBrowserTopBar(
                         onAction(it)
                         menuExpanded = false
                     },
+                )
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchTopBar(
+    query: String,
+    enabled: Boolean,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+    TopAppBar(
+        title = {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
+                enabled = enabled,
+                singleLine = true,
+                placeholder = {
+                    Text(stringResource(R.string.yukifb_search_hint))
+                },
+                trailingIcon = if (query.isNotEmpty()) {
+                    {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(
+                                Icons.Default.Cancel,
+                                contentDescription = stringResource(
+                                    R.string.yukifb_clear_search,
+                                ),
+                            )
+                        }
+                    }
+                } else {
+                    null
+                },
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.yukifb_close_search),
                 )
             }
         },
@@ -312,16 +391,32 @@ internal fun FileBrowserContent(
             .fillMaxSize()
             .padding(contentPadding),
     ) {
-        if (state.isLoading || state.isBusy) {
+        if (state.isLoading || state.isBusy || state.search?.isSearching == true) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
-        if (options.showBreadcrumbs && state.breadcrumbs.size > 1) {
+        if (
+            state.search == null &&
+            options.showBreadcrumbs &&
+            state.breadcrumbs.size > 1
+        ) {
             BreadcrumbBar(
                 breadcrumbs = state.breadcrumbs,
                 enabled = !state.isBusy && !state.isSelectionMode,
                 onClick = onBreadcrumbClick,
             )
             HorizontalDivider()
+        }
+
+        val search = state.search
+        if (search != null) {
+            SearchResults(
+                state = state,
+                options = options,
+                onEntryClick = onEntryClick,
+                onEntryLongClick = onEntryLongClick,
+                onEntryProperties = onEntryProperties,
+            )
+            return@Column
         }
 
         val entries = state.visibleEntries()
@@ -368,6 +463,139 @@ internal fun FileBrowserContent(
         }
     }
 }
+
+@Composable
+private fun SearchResults(
+    state: FileBrowserUiState,
+    options: FileBrowserOptions,
+    onEntryClick: (FileEntry) -> Unit,
+    onEntryLongClick: (FileEntry) -> Unit,
+    onEntryProperties: (FileEntry) -> Unit,
+) {
+    val search = state.search ?: return
+    val results = state.visibleSearchResults()
+    when {
+        search.query.isBlank() -> {
+            EmptyContent(stringResource(R.string.yukifb_search_prompt))
+        }
+
+        search.isSearching && results.isEmpty() -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+
+        results.isEmpty() -> {
+            Column(Modifier.fillMaxSize()) {
+                EmptyContent(
+                    message = stringResource(R.string.yukifb_no_search_results),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                )
+                if (search.skippedDirectoryCount > 0) {
+                    SearchStatus(
+                        resultCount = 0,
+                        resultLimitReached = false,
+                        skippedDirectoryCount = search.skippedDirectoryCount,
+                    )
+                }
+            }
+        }
+
+        else -> {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 4.dp),
+            ) {
+                itemsIndexed(
+                    items = results,
+                    key = { _, result -> result.entry.id.value },
+                ) { index, result ->
+                    FileEntryRow(
+                        entry = result.entry,
+                        index = index,
+                        itemCount = results.size,
+                        selected = result.entry.id in state.selectedIds,
+                        selectionMode = state.isSelectionMode,
+                        enabled = !state.isBusy,
+                        options = options,
+                        location = result.displayLocation(),
+                        onClick = { onEntryClick(result.entry) },
+                        onLongClick = { onEntryLongClick(result.entry) },
+                        onProperties = { onEntryProperties(result.entry) },
+                    )
+                }
+                if (
+                    search.resultLimitReached ||
+                    search.skippedDirectoryCount > 0
+                ) {
+                    item(key = "yukifb-search-status") {
+                        SearchStatus(
+                            resultCount = results.size,
+                            resultLimitReached = search.resultLimitReached,
+                            skippedDirectoryCount = search.skippedDirectoryCount,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyContent(
+    message: String,
+    modifier: Modifier = Modifier.fillMaxSize(),
+) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(horizontal = 24.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun SearchStatus(
+    resultCount: Int,
+    resultLimitReached: Boolean,
+    skippedDirectoryCount: Int,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (resultLimitReached) {
+            Text(
+                text = pluralStringResource(
+                    R.plurals.yukifb_search_result_limit,
+                    resultCount,
+                    resultCount,
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        if (skippedDirectoryCount > 0) {
+            Text(
+                text = pluralStringResource(
+                    R.plurals.yukifb_search_skipped_directories,
+                    skippedDirectoryCount,
+                    skippedDirectoryCount,
+                ),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+private fun FileBrowserSearchResult.displayLocation(): String =
+    parentBreadcrumbs.joinToString(separator = " / ") { it.name }
 
 @Composable
 private fun BreadcrumbBar(
@@ -417,12 +645,16 @@ private fun FileEntryRow(
     selectionMode: Boolean,
     enabled: Boolean,
     options: FileBrowserOptions,
+    location: String? = null,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onProperties: () -> Unit,
 ) {
-    val details = remember(entry, options) {
+    val details = remember(entry, options, location) {
         buildList {
+            if (!location.isNullOrEmpty()) {
+                add(location)
+            }
             if (entry.type == FileEntryType.SYMBOLIC_LINK && entry.linkTarget != null) {
                 add("→ ${entry.linkTarget}")
             }

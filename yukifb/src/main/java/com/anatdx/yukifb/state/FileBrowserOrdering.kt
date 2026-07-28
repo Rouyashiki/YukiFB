@@ -42,4 +42,16 @@ fun orderFileEntries(
 
 /** Returns the entries currently visible to the user. */
 fun FileBrowserUiState.visibleEntries(): List<FileEntry> =
-    orderFileEntries(entries, sort, showHiddenFiles)
+    orderFileEntries(
+        entries = search?.results?.map { it.entry } ?: entries,
+        sort = sort,
+        showHiddenFiles = showHiddenFiles,
+    )
+
+/** Returns active search matches in the same order as [visibleEntries]. */
+fun FileBrowserUiState.visibleSearchResults(): List<FileBrowserSearchResult> {
+    val searchResults = search?.results.orEmpty()
+    if (searchResults.isEmpty()) return emptyList()
+    val resultById = searchResults.associateBy { it.entry.id }
+    return visibleEntries().mapNotNull { resultById[it.id] }
+}

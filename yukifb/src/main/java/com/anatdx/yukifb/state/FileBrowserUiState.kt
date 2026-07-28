@@ -37,6 +37,39 @@ data class FileBrowserClipboard(
     val mode: ClipboardMode,
 )
 
+/**
+ * One filename match found below the active search directory.
+ *
+ * [parentBreadcrumbs] is display and navigation data only. [FileEntry.id] remains
+ * the canonical identity of the result.
+ *
+ * @property entry Matched backend entry.
+ * @property parentBreadcrumbs Entries from the backend root through the parent.
+ */
+data class FileBrowserSearchResult(
+    val entry: FileEntry,
+    val parentBreadcrumbs: List<FileEntry>,
+)
+
+/**
+ * State of an active recursive filename search.
+ *
+ * @property query User-entered filename fragment.
+ * @property results Matches found so far.
+ * @property isSearching Whether recursive traversal is still running.
+ * @property scannedDirectoryCount Number of directories successfully listed.
+ * @property skippedDirectoryCount Number of directories that could not be traversed.
+ * @property resultLimitReached Whether traversal stopped at the safety result limit.
+ */
+data class FileBrowserSearchState(
+    val query: String = "",
+    val results: List<FileBrowserSearchResult> = emptyList(),
+    val isSearching: Boolean = false,
+    val scannedDirectoryCount: Int = 0,
+    val skippedDirectoryCount: Int = 0,
+    val resultLimitReached: Boolean = false,
+)
+
 /** Long-running operation currently performed by the controller. */
 enum class FileBrowserOperation {
     LOAD,
@@ -47,6 +80,7 @@ enum class FileBrowserOperation {
     MOVE,
     CREATE_LINK,
     UPDATE_METADATA,
+    SEARCH,
 }
 
 /** Error produced by a backend operation. */
@@ -68,6 +102,7 @@ data class FileBrowserUiState(
     val activeOperation: FileBrowserOperation? = null,
     val error: FileBrowserError? = null,
     val capabilities: FileBrowserCapabilities = FileBrowserCapabilities(),
+    val search: FileBrowserSearchState? = null,
 ) {
     val isSelectionMode: Boolean
         get() = selectedIds.isNotEmpty()

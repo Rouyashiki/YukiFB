@@ -18,6 +18,7 @@ import com.anatdx.yukifb.model.FileEntry
 import com.anatdx.yukifb.state.FileBrowserAction
 import com.anatdx.yukifb.state.FileBrowserController
 import com.anatdx.yukifb.state.FileBrowserUiState
+import com.anatdx.yukifb.state.visibleEntries
 
 /**
  * Renders a file browser bound to [controller].
@@ -72,8 +73,14 @@ fun FileBrowser(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<BrowserDialog?>(null) }
-    val selectedEntries = remember(state.entries, state.selectedIds) {
-        state.entries.filter { it.id in state.selectedIds }
+    val selectedEntries = remember(
+        state.entries,
+        state.search?.results,
+        state.selectedIds,
+        state.sort,
+        state.showHiddenFiles,
+    ) {
+        state.visibleEntries().filter { it.id in state.selectedIds }
     }
     val unknownError = stringResource(R.string.yukifb_unknown_error)
     val errorMessage = state.error?.cause?.localizedMessage ?: unknownError
@@ -127,19 +134,21 @@ fun FileBrowser(
             }
         },
         floatingActionButton = {
-            CreationButton(
-                capabilities = state.capabilities,
-                importEnabled = onImport != null,
-                enabled = !state.isBusy && !state.isLoading && !state.isSelectionMode,
-                onCreateFile = { dialog = BrowserDialog.CreateFile },
-                onCreateDirectory = { dialog = BrowserDialog.CreateDirectory },
-                onCreateSymbolicLink = {
-                    dialog = BrowserDialog.CreateSymbolicLink
-                },
-                onImport = {
-                    onImport?.invoke(state.currentDirectory)
-                },
-            )
+            if (state.search == null) {
+                CreationButton(
+                    capabilities = state.capabilities,
+                    importEnabled = onImport != null,
+                    enabled = !state.isBusy && !state.isLoading && !state.isSelectionMode,
+                    onCreateFile = { dialog = BrowserDialog.CreateFile },
+                    onCreateDirectory = { dialog = BrowserDialog.CreateDirectory },
+                    onCreateSymbolicLink = {
+                        dialog = BrowserDialog.CreateSymbolicLink
+                    },
+                    onImport = {
+                        onImport?.invoke(state.currentDirectory)
+                    },
+                )
+            }
         },
     ) { contentPadding ->
         FileBrowserContent(

@@ -25,6 +25,7 @@ dependencies {
 - A minimal read-only backend
 - Small optional capability interfaces for mutations and Unix features
 - Stateless Compose UI plus a ready-to-use headless controller
+- Recursive filename search implemented over the minimal directory-listing backend
 - Native Material 3 Expressive list states, motion, FAB menu, and action surfaces
 - Conservative MIME and filename-based file icons with a host override
 - A lightweight state-hoisted plain-text editor for scripts and configuration
@@ -50,7 +51,9 @@ FileBrowser(
 ```
 
 Implement `FileBrowserBackend` for listing and stat calls, then add only the
-capability interfaces supported by the backend.
+capability interfaces supported by the backend. Recursive filename search is
+available automatically through `list`; a backend-specific search API is not
+required.
 
 For text files, decode content in the host and pass it to the optional editor:
 

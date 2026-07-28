@@ -12,6 +12,8 @@ import com.anatdx.yukifb.model.FileEntry
 import com.anatdx.yukifb.model.FileEntryType
 import com.anatdx.yukifb.model.UnixMetadata
 import com.anatdx.yukifb.state.FileBrowserUiState
+import com.anatdx.yukifb.state.FileBrowserSearchResult
+import com.anatdx.yukifb.state.FileBrowserSearchState
 
 @Preview(
     name = "Ramdisk root",
@@ -90,6 +92,59 @@ private fun FileBrowserPreview() {
             onAction = {},
             onOpenFile = {},
             onImport = {},
+        )
+    }
+}
+
+@Preview(
+    name = "Recursive search",
+    showBackground = true,
+    widthDp = 390,
+    heightDp = 800,
+)
+@Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun FileBrowserSearchPreview() {
+    val root = entry(
+        id = EntryId("root"),
+        parentId = null,
+        name = "ramdisk",
+        type = FileEntryType.DIRECTORY,
+    )
+    val overlay = entry(
+        id = EntryId("overlay"),
+        parentId = root.id,
+        name = "overlay.d",
+        type = FileEntryType.DIRECTORY,
+    )
+    val result = entry(
+        id = EntryId("init-overlay"),
+        parentId = overlay.id,
+        name = "init.overlay.rc",
+        type = FileEntryType.REGULAR_FILE,
+        size = 4_096,
+        permissions = 0b110_100_100,
+    )
+    MaterialExpressiveTheme(
+        colorScheme = expressiveLightColorScheme(),
+        motionScheme = MotionScheme.expressive(),
+    ) {
+        FileBrowser(
+            state = FileBrowserUiState(
+                currentDirectory = root,
+                search = FileBrowserSearchState(
+                    query = "init",
+                    results = listOf(
+                        FileBrowserSearchResult(
+                            entry = result,
+                            parentBreadcrumbs = listOf(root, overlay),
+                        ),
+                    ),
+                    scannedDirectoryCount = 7,
+                ),
+            ),
+            onAction = {},
+            onOpenFile = {},
         )
     }
 }

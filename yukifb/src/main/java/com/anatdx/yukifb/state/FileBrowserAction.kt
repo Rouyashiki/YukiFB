@@ -12,6 +12,15 @@ sealed interface FileBrowserAction {
 
     data object Refresh : FileBrowserAction
 
+    /** Opens the recursive filename-search surface. */
+    data object StartSearch : FileBrowserAction
+
+    /** Replaces the active filename query. */
+    data class UpdateSearchQuery(val query: String) : FileBrowserAction
+
+    /** Cancels and closes the active search. */
+    data object StopSearch : FileBrowserAction
+
     data class ToggleSelection(val entryId: EntryId) : FileBrowserAction
 
     data object SelectAll : FileBrowserAction

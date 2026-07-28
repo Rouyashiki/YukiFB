@@ -2,6 +2,20 @@
 <resources>
     <string name="yukifb_up">Up</string>
     <string name="yukifb_refresh">Refresh</string>
+    <string name="yukifb_search">Search</string>
+    <string name="yukifb_search_hint">Search this folder and subfolders</string>
+    <string name="yukifb_clear_search">Clear search</string>
+    <string name="yukifb_close_search">Close search</string>
+    <string name="yukifb_search_prompt">Enter a filename to search this folder and its subfolders</string>
+    <string name="yukifb_no_search_results">No matching files or folders</string>
+    <plurals name="yukifb_search_result_limit">
+        <item quantity="one">Showing the first %1$d result. Refine the search to see fewer matches.</item>
+        <item quantity="other">Showing the first %1$d results. Refine the search to see fewer matches.</item>
+    </plurals>
+    <plurals name="yukifb_search_skipped_directories">
+        <item quantity="one">%1$d folder could not be searched</item>
+        <item quantity="other">%1$d folders could not be searched</item>
+    </plurals>
     <string name="yukifb_more">More</string>
     <string name="yukifb_close_selection">Clear selection</string>
     <plurals name="yukifb_selected_count">
