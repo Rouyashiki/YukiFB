@@ -94,4 +94,11 @@
     <string name="yukifb_editor_continue_editing">继续编辑</string>
     <string name="yukifb_editor_status">%1$d 行 · %2$d 个字符</string>
     <string name="yukifb_editor_modified">已修改</string>
+    <string name="yukifb_editor_encoding_value">编码：%1$s</string>
+    <string name="yukifb_editor_line_ending_value">换行符：%1$s</string>
+    <string name="yukifb_editor_mixed_line_endings">混合 → %1$s</string>
+    <string name="yukifb_editor_reopen_encoding">使用指定编码重新打开…</string>
+    <string name="yukifb_editor_reopen_encoding_title">使用指定编码重新打开</string>
+    <string name="yukifb_editor_reopen_encoding_warning">重新打开将放弃未保存的文本和格式更改。</string>
+    <string name="yukifb_editor_reopen">重新打开</string>
 </resources>

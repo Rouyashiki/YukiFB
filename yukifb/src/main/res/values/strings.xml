@@ -100,4 +100,11 @@
     <string name="yukifb_editor_continue_editing">Continue editing</string>
     <string name="yukifb_editor_status">%1$d lines · %2$d characters</string>
     <string name="yukifb_editor_modified">Modified</string>
+    <string name="yukifb_editor_encoding_value">Encoding: %1$s</string>
+    <string name="yukifb_editor_line_ending_value">Line ending: %1$s</string>
+    <string name="yukifb_editor_mixed_line_endings">Mixed → %1$s</string>
+    <string name="yukifb_editor_reopen_encoding">Reopen with encoding…</string>
+    <string name="yukifb_editor_reopen_encoding_title">Reopen with encoding</string>
+    <string name="yukifb_editor_reopen_encoding_warning">Reopening will discard unsaved text and format changes.</string>
+    <string name="yukifb_editor_reopen">Reopen</string>
 </resources>

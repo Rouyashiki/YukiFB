@@ -10,10 +10,12 @@ import com.anatdx.yukifb.backend.FileBrowserCapabilities
 import com.anatdx.yukifb.model.EntryId
 import com.anatdx.yukifb.model.FileEntry
 import com.anatdx.yukifb.model.FileEntryType
+import com.anatdx.yukifb.model.TextFileEncoding
 import com.anatdx.yukifb.model.UnixMetadata
 import com.anatdx.yukifb.state.FileBrowserUiState
 import com.anatdx.yukifb.state.FileBrowserSearchResult
 import com.anatdx.yukifb.state.FileBrowserSearchState
+import com.anatdx.yukifb.state.rememberTextFileEditorState
 
 @Preview(
     name = "Ramdisk root",
@@ -145,6 +147,33 @@ private fun FileBrowserSearchPreview() {
             ),
             onAction = {},
             onOpenFile = {},
+        )
+    }
+}
+
+@Preview(
+    name = "Text editor formats",
+    showBackground = true,
+    widthDp = 390,
+    heightDp = 800,
+)
+@Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun TextFileEditorPreview() {
+    MaterialExpressiveTheme(
+        colorScheme = expressiveLightColorScheme(),
+        motionScheme = MotionScheme.expressive(),
+    ) {
+        val state = rememberTextFileEditorState(
+            initialText = "#!/system/bin/sh\r\necho \"YukiFB\"\nexit 0\r\n",
+            initialEncoding = TextFileEncoding.UTF_8,
+        )
+        TextFileEditor(
+            fileName = "init.custom.rc",
+            state = state,
+            onSave = {},
+            onClose = {},
+            onReopenWithEncoding = {},
         )
     }
 }

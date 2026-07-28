@@ -1,9 +1,12 @@
 package com.anatdx.yukifb.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,13 +24,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,12 +51,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anatdx.yukifb.R
+import com.anatdx.yukifb.model.TextFileEncoding
+import com.anatdx.yukifb.model.TextFileSaveRequest
+import com.anatdx.yukifb.model.TextLineEnding
 import com.anatdx.yukifb.state.TextFileEditorState
 import com.anatdx.yukifb.state.countTextLines
 import com.anatdx.yukifb.state.lineNumberText
@@ -56,8 +69,15 @@ import com.anatdx.yukifb.state.lineNumberText
 /**
  * Renders a lightweight plain-text file editor.
  *
- * YukiFB does not decode or persist the file. [onSave] receives the current text;
- * the host should call [TextFileEditorState.markSaved] after a successful write.
+ * YukiFB does not decode or persist the file. [onSave] receives the current text
+ * with the selected line ending already applied plus the encoding selected by the
+ * user. The host should call [TextFileEditorState.markSaved] after a successful write.
+ *
+ * [onEncodingChange] observes save-format changes. When [onReopenWithEncoding] is
+ * supplied, the encoding menu also offers a reopen action; the host should decode
+ * the original bytes again and call [TextFileEditorState.replaceDocument]. Hosts can
+ * limit or hide format controls with [availableEncodings] and [availableLineEndings].
+ *
  * Hosts should also consult [TextFileEditorState.hasUnsavedChanges] before handling
  * navigation that originates outside this surface, such as the system back action.
  */
@@ -69,12 +89,16 @@ import com.anatdx.yukifb.state.lineNumberText
 fun TextFileEditor(
     fileName: String,
     state: TextFileEditorState,
-    onSave: (String) -> Unit,
+    onSave: (TextFileSaveRequest) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     isSaving: Boolean = false,
     readOnly: Boolean = false,
     showLineNumbers: Boolean = true,
+    availableEncodings: List<TextFileEncoding> = TextFileEncoding.entries,
+    availableLineEndings: List<TextLineEnding> = TextLineEnding.entries,
+    onEncodingChange: (TextFileEncoding) -> Unit = {},
+    onReopenWithEncoding: ((TextFileEncoding) -> Unit)? = null,
 ) {
     var showDiscardConfirmation by remember { mutableStateOf(false) }
     val currentText = state.text
@@ -101,7 +125,7 @@ fun TextFileEditor(
                 onClose = ::requestClose,
                 onUndo = { state.textFieldState.undoState.undo() },
                 onRedo = { state.textFieldState.undoState.redo() },
-                onSave = { onSave(currentText) },
+                onSave = { onSave(state.createSaveRequest()) },
             )
         },
         bottomBar = {
@@ -109,6 +133,19 @@ fun TextFileEditor(
                 lineCount = countTextLines(currentText),
                 characterCount = currentText.length,
                 dirty = dirty,
+                encoding = state.encoding,
+                lineEnding = state.lineEnding,
+                mixedLineEndings = state.sourceLineEndings.isMixed,
+                availableEncodings = availableEncodings,
+                availableLineEndings = availableLineEndings,
+                saveFormatControlsEnabled = !isSaving && !readOnly,
+                reopenEncodingEnabled = !isSaving,
+                onEncodingChange = { encoding ->
+                    state.selectEncoding(encoding)
+                    onEncodingChange(encoding)
+                },
+                onReopenWithEncoding = onReopenWithEncoding,
+                onLineEndingChange = state::selectLineEnding,
             )
         },
     ) { contentPadding ->
@@ -300,7 +337,24 @@ private fun TextEditorStatusBar(
     lineCount: Int,
     characterCount: Int,
     dirty: Boolean,
+    encoding: TextFileEncoding,
+    lineEnding: TextLineEnding,
+    mixedLineEndings: Boolean,
+    availableEncodings: List<TextFileEncoding>,
+    availableLineEndings: List<TextLineEnding>,
+    saveFormatControlsEnabled: Boolean,
+    reopenEncodingEnabled: Boolean,
+    onEncodingChange: (TextFileEncoding) -> Unit,
+    onReopenWithEncoding: ((TextFileEncoding) -> Unit)?,
+    onLineEndingChange: (TextLineEnding) -> Unit,
 ) {
+    val encodingOptions = remember(encoding, availableEncodings) {
+        (listOf(encoding) + availableEncodings).distinct()
+    }
+    val lineEndingOptions = remember(lineEnding, availableLineEndings) {
+        (listOf(lineEnding) + availableLineEndings).distinct()
+    }
+
     Surface(
         tonalElevation = 2.dp,
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -322,11 +376,224 @@ private fun TextEditorStatusBar(
                 style = MaterialTheme.typography.labelMedium,
             )
             Spacer(Modifier.weight(1f))
+            if (availableEncodings.isNotEmpty()) {
+                EditorEncodingMenu(
+                    selected = encoding,
+                    contentDescription = stringResource(
+                        R.string.yukifb_editor_encoding_value,
+                        encoding.displayName,
+                    ),
+                    options = encodingOptions,
+                    saveEnabled = saveFormatControlsEnabled,
+                    reopenEnabled = reopenEncodingEnabled,
+                    hasUnsavedChanges = dirty,
+                    onSelectForSave = onEncodingChange,
+                    onReopen = onReopenWithEncoding,
+                )
+            }
+            if (availableLineEndings.isNotEmpty()) {
+                val lineEndingLabel = if (mixedLineEndings) {
+                    stringResource(
+                        R.string.yukifb_editor_mixed_line_endings,
+                        lineEnding.name,
+                    )
+                } else {
+                    lineEnding.name
+                }
+                EditorFormatMenu(
+                    selected = lineEnding,
+                    selectedLabel = lineEndingLabel,
+                    contentDescription = stringResource(
+                        R.string.yukifb_editor_line_ending_value,
+                        lineEndingLabel,
+                    ),
+                    options = lineEndingOptions,
+                    optionLabel = TextLineEnding::name,
+                    enabled = saveFormatControlsEnabled,
+                    onSelect = onLineEndingChange,
+                )
+            }
             if (dirty) {
                 Text(
+                    modifier = Modifier.padding(start = 4.dp),
                     text = stringResource(R.string.yukifb_editor_modified),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditorEncodingMenu(
+    selected: TextFileEncoding,
+    contentDescription: String,
+    options: List<TextFileEncoding>,
+    saveEnabled: Boolean,
+    reopenEnabled: Boolean,
+    hasUnsavedChanges: Boolean,
+    onSelectForSave: (TextFileEncoding) -> Unit,
+    onReopen: ((TextFileEncoding) -> Unit)?,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var showReopenDialog by remember { mutableStateOf(false) }
+    var reopenEncoding by remember(selected) { mutableStateOf(selected) }
+    val canReopen = reopenEnabled && onReopen != null
+
+    Box {
+        TextButton(
+            modifier = Modifier.semantics {
+                this.contentDescription = contentDescription
+            },
+            enabled = (saveEnabled || canReopen) && options.isNotEmpty(),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            onClick = { expanded = true },
+        ) {
+            Text(
+                text = selected.displayName,
+                maxLines = 1,
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.displayName) },
+                    leadingIcon = if (option == selected) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                    enabled = saveEnabled,
+                    onClick = {
+                        expanded = false
+                        onSelectForSave(option)
+                    },
+                )
+            }
+            if (onReopen != null) {
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.yukifb_editor_reopen_encoding)) },
+                    enabled = canReopen,
+                    onClick = {
+                        expanded = false
+                        reopenEncoding = selected
+                        showReopenDialog = true
+                    },
+                )
+            }
+        }
+    }
+
+    if (showReopenDialog && onReopen != null) {
+        AlertDialog(
+            onDismissRequest = { showReopenDialog = false },
+            title = { Text(stringResource(R.string.yukifb_editor_reopen_encoding_title)) },
+            text = {
+                Column {
+                    if (hasUnsavedChanges) {
+                        Text(
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            text = stringResource(
+                                R.string.yukifb_editor_reopen_encoding_warning,
+                            ),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    options.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { reopenEncoding = option }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = reopenEncoding == option,
+                                onClick = { reopenEncoding = option },
+                            )
+                            Text(option.displayName)
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReopenDialog = false }) {
+                    Text(stringResource(R.string.yukifb_cancel))
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showReopenDialog = false
+                        onReopen(reopenEncoding)
+                    },
+                ) {
+                    Text(stringResource(R.string.yukifb_editor_reopen))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun <T> EditorFormatMenu(
+    selected: T,
+    selectedLabel: String,
+    contentDescription: String,
+    options: List<T>,
+    optionLabel: (T) -> String,
+    enabled: Boolean,
+    onSelect: (T) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        TextButton(
+            modifier = Modifier.semantics {
+                this.contentDescription = contentDescription
+            },
+            enabled = enabled && options.isNotEmpty(),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            onClick = { expanded = true },
+        ) {
+            Text(
+                text = selectedLabel,
+                maxLines = 1,
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(optionLabel(option)) },
+                    leadingIcon = if (option == selected) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelect(option)
+                    },
                 )
             }
         }
