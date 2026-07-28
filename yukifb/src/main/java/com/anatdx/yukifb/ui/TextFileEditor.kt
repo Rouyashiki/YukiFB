@@ -50,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -65,6 +66,45 @@ import com.anatdx.yukifb.model.TextLineEnding
 import com.anatdx.yukifb.state.TextFileEditorState
 import com.anatdx.yukifb.state.countTextLines
 import com.anatdx.yukifb.state.lineNumberText
+import kotlin.jvm.JvmName
+
+/**
+ * Renders the 0.1.0 text editor API for source and binary compatibility.
+ *
+ * This overload keeps format controls hidden because its save callback cannot
+ * communicate a selected encoding to the host.
+ */
+@Deprecated(
+    message = "Use the format-aware overload whose onSave callback receives TextFileSaveRequest",
+)
+@OptIn(
+    ExperimentalFoundationApi::class,
+    ExperimentalMaterial3Api::class,
+)
+@Composable
+fun TextFileEditor(
+    fileName: String,
+    state: TextFileEditorState,
+    onSave: (String) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+    isSaving: Boolean = false,
+    readOnly: Boolean = false,
+    showLineNumbers: Boolean = true,
+) {
+    TextFileEditor(
+        fileName = fileName,
+        state = state,
+        onSave = { _: TextFileSaveRequest -> onSave(state.text) },
+        onClose = onClose,
+        modifier = modifier,
+        isSaving = isSaving,
+        readOnly = readOnly,
+        showLineNumbers = showLineNumbers,
+        availableEncodings = emptyList(),
+        availableLineEndings = emptyList(),
+    )
+}
 
 /**
  * Renders a lightweight plain-text file editor.
@@ -86,6 +126,7 @@ import com.anatdx.yukifb.state.lineNumberText
     ExperimentalMaterial3Api::class,
 )
 @Composable
+@JvmName("TextFileEditorWithFormat")
 fun TextFileEditor(
     fileName: String,
     state: TextFileEditorState,
@@ -369,8 +410,16 @@ private fun TextEditorStatusBar(
             Text(
                 text = stringResource(
                     R.string.yukifb_editor_status,
-                    lineCount,
-                    characterCount,
+                    pluralStringResource(
+                        R.plurals.yukifb_editor_line_count,
+                        lineCount,
+                        lineCount,
+                    ),
+                    pluralStringResource(
+                        R.plurals.yukifb_editor_character_count,
+                        characterCount,
+                        characterCount,
+                    ),
                 ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelMedium,

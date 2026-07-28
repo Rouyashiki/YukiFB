@@ -27,11 +27,39 @@ import com.anatdx.yukifb.model.detectTextLineEndings
  * [initialText] and fall back to LF when no line ending exists.
  */
 @Stable
-class TextFileEditorState(
-    initialText: String = "",
-    initialEncoding: TextFileEncoding = TextFileEncoding.UTF_8,
-    initialLineEnding: TextLineEnding? = null,
+class TextFileEditorState private constructor(
+    initialText: String,
+    initialEncoding: TextFileEncoding,
+    initialLineEnding: TextLineEnding?,
+    @Suppress("UNUSED_PARAMETER") constructorMarker: Unit,
 ) {
+    /** Creates empty UTF-8 editor state. */
+    constructor() : this(initialText = "")
+
+    /**
+     * Creates editor state for UTF-8 text, retaining the 0.1.0 constructor API.
+     */
+    constructor(initialText: String = "") : this(
+        initialText = initialText,
+        initialEncoding = TextFileEncoding.UTF_8,
+        initialLineEnding = null,
+        constructorMarker = Unit,
+    )
+
+    /**
+     * Creates editor state for text decoded with an explicit format.
+     */
+    constructor(
+        initialText: String,
+        initialEncoding: TextFileEncoding,
+        initialLineEnding: TextLineEnding? = null,
+    ) : this(
+        initialText = initialText,
+        initialEncoding = initialEncoding,
+        initialLineEnding = initialLineEnding,
+        constructorMarker = Unit,
+    )
+
     private val initialLineEndingDetection = detectTextLineEndings(initialText)
     private val normalizedInitialText = convertTextLineEndings(initialText, TextLineEnding.LF)
 
@@ -141,9 +169,18 @@ class TextFileEditorState(
  * Initial arguments are used only when the state is first created.
  */
 @Composable
+fun rememberTextFileEditorState(initialText: String = ""): TextFileEditorState =
+    remember { TextFileEditorState(initialText) }
+
+/**
+ * Remembers a [TextFileEditorState] for text decoded with an explicit format.
+ *
+ * Initial arguments are used only when the state is first created.
+ */
+@Composable
 fun rememberTextFileEditorState(
     initialText: String = "",
-    initialEncoding: TextFileEncoding = TextFileEncoding.UTF_8,
+    initialEncoding: TextFileEncoding,
     initialLineEnding: TextLineEnding? = null,
 ): TextFileEditorState = remember {
     TextFileEditorState(

@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.anatdx"
-version = "0.1.0"
+version = "0.1.1"
 
 android {
     namespace = "com.anatdx.yukifb"
@@ -56,7 +56,7 @@ mavenPublishing {
     coordinates(
         groupId = "com.anatdx",
         artifactId = "yukifb",
-        version = "0.1.0",
+        version = "0.1.1",
     )
 
     pom {

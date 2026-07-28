@@ -98,7 +98,15 @@
     <string name="yukifb_editor_discard_message">Changes to this file have not been saved.</string>
     <string name="yukifb_editor_discard">Discard</string>
     <string name="yukifb_editor_continue_editing">Continue editing</string>
-    <string name="yukifb_editor_status">%1$d lines · %2$d characters</string>
+    <string name="yukifb_editor_status">%1$s · %2$s</string>
+    <plurals name="yukifb_editor_line_count">
+        <item quantity="one">%1$d line</item>
+        <item quantity="other">%1$d lines</item>
+    </plurals>
+    <plurals name="yukifb_editor_character_count">
+        <item quantity="one">%1$d character</item>
+        <item quantity="other">%1$d characters</item>
+    </plurals>
     <string name="yukifb_editor_modified">Modified</string>
     <string name="yukifb_editor_encoding_value">Encoding: %1$s</string>
     <string name="yukifb_editor_line_ending_value">Line ending: %1$s</string>

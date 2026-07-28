@@ -476,7 +476,10 @@ private fun SearchResults(
     val results = state.visibleSearchResults()
     when {
         search.query.isBlank() -> {
-            EmptyContent(stringResource(R.string.yukifb_search_prompt))
+            EmptyContent(
+                message = stringResource(R.string.yukifb_search_prompt),
+                modifier = Modifier.fillMaxSize(),
+            )
         }
 
         search.isSearching && results.isEmpty() -> {
@@ -546,7 +549,7 @@ private fun SearchResults(
 @Composable
 private fun EmptyContent(
     message: String,
-    modifier: Modifier = Modifier.fillMaxSize(),
+    modifier: Modifier = Modifier,
 ) {
     Box(modifier, contentAlignment = Alignment.Center) {
         Text(
