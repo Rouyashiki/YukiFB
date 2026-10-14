@@ -1,0 +1,22 @@
+<resources>
+    <string name="yukifb_action_checksums">Checksums</string>
+    <string name="yukifb_action_share">Share</string>
+    <string name="yukifb_action_open_externally">Open with another app</string>
+    <string name="yukifb_action_close">Close</string>
+    <string name="yukifb_action_cancel">Cancel</string>
+    <string name="yukifb_action_cancelling">Cancelling…</string>
+    <string name="yukifb_action_preparing">Preparing a read-only copy…</string>
+    <string name="yukifb_checksum_choose">Select algorithms to calculate.</string>
+    <string name="yukifb_checksum_calculate">Calculate</string>
+    <string name="yukifb_checksum_retry">Retry</string>
+    <string name="yukifb_checksum_calculating">Calculating checksums…</string>
+    <string name="yukifb_checksum_failed">Could not calculate checksums. Try again.</string>
+    <string name="yukifb_checksum_changed">The file changed. Calculate again to read the current version.</string>
+    <string name="yukifb_checksum_copy">Copy %1$s</string>
+    <string name="yukifb_checksum_compare">Checksum to compare</string>
+    <string name="yukifb_checksum_paste">Paste checksum</string>
+    <string name="yukifb_checksum_invalid">Enter a hexadecimal checksum of a supported length.</string>
+    <string name="yukifb_checksum_not_computed">Calculate an algorithm of this length to compare.</string>
+    <string name="yukifb_checksum_match">Matches: %1$s</string>
+    <string name="yukifb_checksum_different">Does not match the calculated checksums.</string>
+</resources>

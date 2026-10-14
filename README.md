@@ -141,6 +141,67 @@ UTF-32LE, LF, CR, and CRLF. Pass restricted lists to `availableEncodings` or
 `availableLineEndings` when a backend supports only a subset; pass an empty list
 to hide the corresponding control.
 
+## File actions and checksums
+
+The core library also provides a centered, responsive `FileActionsDialog` and a
+`FileChecksumsDialog`. Neither requires `yukifb-hex`. Supply only available actions
+through the existing `FileBrowser.onOpenFile` callback; action IDs, like entry IDs,
+must remain stable. Directories and selection keep their existing behavior.
+
+```kotlin
+// Keep these in the browser's scope. FileBrowser.onOpenFile sets selectedFile.
+var selectedFile by remember { mutableStateOf<FileEntry?>(null) }
+var showChecksums by remember { mutableStateOf(false) }
+var selectedAlgorithmIds by remember { mutableStateOf(setOf("MD5", "SHA-256")) }
+val scope = rememberCoroutineScope()
+var checksumController by remember { mutableStateOf<FileChecksumController?>(null) }
+val checksumState = checksumController?.state?.collectAsState()?.value
+val contentBusy = checksumState?.running == true // Disable conflicting host operations.
+DisposableEffect(checksumController) {
+    val controller = checksumController
+    onDispose { controller?.cancel() }
+}
+
+selectedFile?.let { file ->
+    if (showChecksums) {
+        val controller = checkNotNull(checksumController)
+        FileChecksumsDialog(controller) {
+            selectedAlgorithmIds = controller.state.value.selectedIds
+            showChecksums = false
+            selectedFile = null
+        }
+    } else {
+        FileActionsDialog(
+            entry = file,
+            actions = availableHostActions(file), // Already filtered by capabilities.
+            onAction = { id ->
+                if (id == "checksums" && !contentBusy) {
+                    checksumController = FileChecksumController(file, checksumCapability, scope, selectedAlgorithmIds)
+                    showChecksums = true
+                }
+            },
+            onDismiss = { selectedFile = null },
+        )
+    }
+}
+```
+
+`FileChecksumCapability` describes algorithms using stable IDs, display names and
+hexadecimal lengths, and calculates the selected batch from one consistent content
+snapshot. Return one `FileChecksumValue` per requested algorithm, including leading
+zeroes. Report `FileByteProgress` using `Long` byte counts and propagate cancellation.
+Throw `FileContentChangedException` if the snapshot becomes invalid. The controller
+validates results, discards stale batches and compares explicitly entered values.
+
+`FileShareCapability` and `FileExternalOpenCapability` are independent optional host
+interfaces. The host owns temporary exports, URIs, MIME detection, system choosers
+and retention. Use `FileActionProgressDialog` while preparing a copy. Cancel on
+close and wait for transport cleanup before allowing mutations or another request;
+the checksum controller reports `running` until its cancelled task actually ends.
+Retain the controller above conditional dialog rendering while waiting for cleanup.
+Successful copies must remain readable for their recipients after the page closes.
+All dialogs inherit `YukiFBProvider` and the host Material theme.
+
 ## License
 
 Apache License 2.0.

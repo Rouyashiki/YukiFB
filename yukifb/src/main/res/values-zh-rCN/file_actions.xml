@@ -1,0 +1,22 @@
+<resources>
+    <string name="yukifb_action_checksums">计算校验值</string>
+    <string name="yukifb_action_share">分享</string>
+    <string name="yukifb_action_open_externally">其他打开方式</string>
+    <string name="yukifb_action_close">关闭</string>
+    <string name="yukifb_action_cancel">取消</string>
+    <string name="yukifb_action_cancelling">正在取消…</string>
+    <string name="yukifb_action_preparing">正在准备只读副本…</string>
+    <string name="yukifb_checksum_choose">选择需要计算的算法。</string>
+    <string name="yukifb_checksum_calculate">计算</string>
+    <string name="yukifb_checksum_retry">重试</string>
+    <string name="yukifb_checksum_calculating">正在计算校验值…</string>
+    <string name="yukifb_checksum_failed">无法计算校验值，请重试。</string>
+    <string name="yukifb_checksum_changed">文件内容已变化，请重新计算以读取当前版本。</string>
+    <string name="yukifb_checksum_copy">复制 %1$s</string>
+    <string name="yukifb_checksum_compare">待对比的校验值</string>
+    <string name="yukifb_checksum_paste">粘贴校验值</string>
+    <string name="yukifb_checksum_invalid">请输入长度符合所支持算法的十六进制校验值。</string>
+    <string name="yukifb_checksum_not_computed">请先计算相应长度的算法以进行对比。</string>
+    <string name="yukifb_checksum_match">匹配：%1$s</string>
+    <string name="yukifb_checksum_different">与已计算的校验值不匹配。</string>
+</resources>
