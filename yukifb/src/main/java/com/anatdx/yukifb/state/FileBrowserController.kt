@@ -17,6 +17,7 @@ import com.anatdx.yukifb.model.EntryId
 import com.anatdx.yukifb.model.FileEntry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -48,6 +49,8 @@ class FileBrowserController(
     )
     private var loadJob: Job? = null
     private var searchJob: Job? = null
+    private var loadRevision = 0L
+    private var failedDirectory: FileEntry? = null
 
     /** Observable browser state. */
     val state: StateFlow<FileBrowserUiState> = _state.asStateFlow()
@@ -102,17 +105,8 @@ class FileBrowserController(
         if (!directory.isDirectory || _state.value.isBusy) return
         searchJob?.cancel()
         searchJob = null
-        _state.update {
-            it.copy(
-                currentDirectory = directory,
-                breadcrumbs = listOf(directory),
-                entries = emptyList(),
-                selectedIds = emptySet(),
-                search = null,
-                error = null,
-            )
-        }
-        refresh()
+        _state.update { it.copy(search = it.search?.copy(isSearching = false)) }
+        requestDirectory(directory, navigating = true)
     }
 
     private fun navigateUp() {
@@ -125,10 +119,17 @@ class FileBrowserController(
 
     private fun refresh() {
         if (_state.value.isBusy) return
-        val directory = _state.value.currentDirectory
+        val directory = failedDirectory ?: _state.value.currentDirectory
+        requestDirectory(directory, navigating = directory.id != _state.value.currentDirectory.id)
+    }
+
+    private fun requestDirectory(directory: FileEntry, navigating: Boolean) {
+        val revision = ++loadRevision
         loadJob?.cancel()
-        loadJob = scope.launch {
-            loadDirectory(directory)
+        failedDirectory = null
+        loadJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            _state.update { it.copy(isLoading = true, error = null) }
+            loadDirectory(directory, revision, navigating)
         }
     }
 
@@ -371,26 +372,27 @@ class FileBrowserController(
         }
     }
 
-    private suspend fun loadDirectory(directory: FileEntry) {
-        _state.update { it.copy(isLoading = true, error = null) }
+    private suspend fun loadDirectory(directory: FileEntry, revision: Long, navigating: Boolean) {
         try {
             val entries = backend.list(directory.id)
             val breadcrumbs = loadBreadcrumbs(directory)
-            if (_state.value.currentDirectory.id != directory.id) return
+            if (revision != loadRevision) return
             val existingIds = entries.asSequence().map { it.id }.toSet()
             _state.update {
                 it.copy(
                     currentDirectory = directory,
                     breadcrumbs = breadcrumbs,
                     entries = entries,
-                    selectedIds = it.selectedIds.intersect(existingIds),
+                    selectedIds = if (navigating) emptySet() else it.selectedIds.intersect(existingIds),
+                    search = if (navigating) null else it.search,
                     isLoading = false,
                 )
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Throwable) {
-            if (_state.value.currentDirectory.id == directory.id) {
+            if (revision == loadRevision) {
+                failedDirectory = directory
                 _state.update {
                     it.copy(
                         isLoading = false,
@@ -570,11 +572,13 @@ class FileBrowserController(
         block: suspend () -> Unit,
     ) {
         if (_state.value.isBusy) return
+        loadRevision++
+        failedDirectory = null
         loadJob?.cancel()
         loadJob = null
         searchJob?.cancel()
         searchJob = null
-        scope.launch {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             _state.update {
                 it.copy(
                     isLoading = false,

@@ -1,5 +1,15 @@
 package com.anatdx.yukifb.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,9 +21,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -51,11 +63,12 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FlexibleBottomAppBar
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
@@ -67,21 +80,34 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import com.anatdx.yukifb.R
 import com.anatdx.yukifb.backend.FileBrowserCapabilities
 import com.anatdx.yukifb.model.FileEntry
@@ -89,6 +115,7 @@ import com.anatdx.yukifb.model.FileEntryType
 import com.anatdx.yukifb.state.ClipboardMode
 import com.anatdx.yukifb.state.FileBrowserAction
 import com.anatdx.yukifb.state.FileBrowserClipboard
+import com.anatdx.yukifb.state.FileBrowserOperation
 import com.anatdx.yukifb.state.FileBrowserSearchResult
 import com.anatdx.yukifb.state.FileBrowserUiState
 import com.anatdx.yukifb.state.FileSortDirection
@@ -103,11 +130,37 @@ internal fun FileBrowserTopBar(
     onAction: (FileBrowserAction) -> Unit,
     onClose: (() -> Unit)?,
     topBarActions: @Composable RowScope.() -> Unit,
+    preview: Boolean = false,
+) {
+    val effects = yukiFBEffectsSpec<Float>()
+    val size = yukiFBSpatialSpec<IntSize>()
+    AnimatedContent(
+        targetState = state,
+        contentKey = { if (it.isSelectionMode) 2 else if (it.search != null) 1 else 0 },
+        transitionSpec = { fadeIn(effects).togetherWith(fadeOut(effects)).using(SizeTransform { _, _ -> size }) },
+        label = "browser top bar",
+    ) { page ->
+        val active = (page.isSelectionMode == state.isSelectionMode) && ((page.search == null) == (state.search == null))
+        Box(if (active) Modifier else Modifier.blockPreviewInput()) {
+            BrowserTopBarContent(page, onAction, onClose, topBarActions, preview)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BrowserTopBarContent(
+    state: FileBrowserUiState,
+    onAction: (FileBrowserAction) -> Unit,
+    onClose: (() -> Unit)?,
+    topBarActions: @Composable RowScope.() -> Unit,
+    preview: Boolean = false,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
     if (state.isSelectionMode) {
         TopAppBar(
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = yukiFBColors.topBar),
             title = {
                 Text(
                     pluralStringResource(
@@ -121,7 +174,7 @@ internal fun FileBrowserTopBar(
                 IconButton(
                     onClick = { onAction(FileBrowserAction.ClearSelection) },
                 ) {
-                    Icon(
+                    BrowserIcon(
                         Icons.Default.Close,
                         contentDescription = stringResource(
                             R.string.yukifb_close_selection,
@@ -131,7 +184,7 @@ internal fun FileBrowserTopBar(
             },
             actions = {
                 IconButton(onClick = { onAction(FileBrowserAction.SelectAll) }) {
-                    Icon(
+                    BrowserIcon(
                         Icons.Default.SelectAll,
                         contentDescription = stringResource(R.string.yukifb_select_all),
                     )
@@ -143,6 +196,7 @@ internal fun FileBrowserTopBar(
 
     if (state.search != null) {
         SearchTopBar(
+            requestFocus = !preview,
             query = state.search.query,
             enabled = !state.isBusy,
             onQueryChange = {
@@ -154,6 +208,7 @@ internal fun FileBrowserTopBar(
     }
 
     TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = yukiFBColors.topBar),
         title = {
             Text(
                 text = state.currentDirectory.name,
@@ -168,7 +223,7 @@ internal fun FileBrowserTopBar(
                         enabled = !state.isBusy,
                         onClick = { onAction(FileBrowserAction.NavigateUp) },
                     ) {
-                        Icon(
+                        BrowserIcon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.yukifb_up),
                         )
@@ -180,7 +235,7 @@ internal fun FileBrowserTopBar(
                         enabled = !state.isBusy,
                         onClick = onClose,
                     ) {
-                        Icon(
+                        BrowserIcon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.yukifb_close),
                         )
@@ -194,7 +249,7 @@ internal fun FileBrowserTopBar(
                 enabled = !state.isBusy && !state.isLoading,
                 onClick = { onAction(FileBrowserAction.StartSearch) },
             ) {
-                Icon(
+                BrowserIcon(
                     Icons.Default.Search,
                     contentDescription = stringResource(R.string.yukifb_search),
                 )
@@ -203,14 +258,14 @@ internal fun FileBrowserTopBar(
                 enabled = !state.isBusy,
                 onClick = { onAction(FileBrowserAction.Refresh) },
             ) {
-                Icon(
+                BrowserIcon(
                     Icons.Default.Refresh,
                     contentDescription = stringResource(R.string.yukifb_refresh),
                 )
             }
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
-                    Icon(
+                    BrowserIcon(
                         Icons.Default.MoreVert,
                         contentDescription = stringResource(R.string.yukifb_more),
                     )
@@ -232,47 +287,61 @@ internal fun FileBrowserTopBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchTopBar(
+    requestFocus: Boolean,
     query: String,
     enabled: Boolean,
     onQueryChange: (String) -> Unit,
     onClose: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+    val keyboard = LocalSoftwareKeyboardController.current
+    val visible = remember { MutableTransitionState(false).apply { targetState = true } }
+    val effects = yukiFBEffectsSpec<Float>()
+    val spatial = yukiFBSpatialSpec<androidx.compose.ui.unit.IntSize>()
+    val expand = expressiveYukiFB && LocalYukiFBMotion.current == YukiFBMotion.Full
+    if (requestFocus) {
+        LaunchedEffect(Unit) { focusRequester.requestFocus() }
+        DisposableEffect(keyboard) { onDispose { keyboard?.hide() } }
     }
     TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = yukiFBColors.topBar),
         title = {
-            OutlinedTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester),
-                enabled = enabled,
-                singleLine = true,
-                placeholder = {
-                    Text(stringResource(R.string.yukifb_search_hint))
-                },
-                trailingIcon = if (query.isNotEmpty()) {
-                    {
-                        IconButton(onClick = { onQueryChange("") }) {
-                            Icon(
-                                Icons.Default.Cancel,
-                                contentDescription = stringResource(
-                                    R.string.yukifb_clear_search,
-                                ),
-                            )
+            AnimatedVisibility(
+                visibleState = visible,
+                enter = if (expand) fadeIn(effects) + expandHorizontally(spatial, expandFrom = Alignment.End) else fadeIn(effects),
+                exit = fadeOut(effects),
+            ) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
+                    enabled = enabled,
+                    singleLine = true,
+                    placeholder = {
+                        Text(stringResource(R.string.yukifb_search_hint))
+                    },
+                    trailingIcon = if (query.isNotEmpty()) {
+                        {
+                            IconButton(onClick = { onQueryChange("") }) {
+                                BrowserIcon(
+                                    Icons.Default.Cancel,
+                                    contentDescription = stringResource(
+                                        R.string.yukifb_clear_search,
+                                    ),
+                                )
+                            }
                         }
-                    }
-                } else {
-                    null
-                },
-            )
+                    } else {
+                        null
+                    },
+                )
+            }
         },
         navigationIcon = {
-            IconButton(onClick = onClose) {
-                Icon(
+            IconButton(onClick = { keyboard?.hide(); onClose() }) {
+                BrowserIcon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.yukifb_close_search),
                 )
@@ -329,7 +398,7 @@ private fun BrowserOptionsMenu(
                 )
             },
             leadingIcon = {
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null)
+                BrowserIcon(Icons.AutoMirrored.Filled.Sort, contentDescription = null)
             },
             onClick = {
                 val direction = if (
@@ -367,7 +436,7 @@ private fun SortMenuItem(
         text = { Text(label) },
         leadingIcon = {
             if (selected) {
-                Icon(Icons.Default.Check, contentDescription = null)
+                BrowserIcon(Icons.Default.Check, contentDescription = null)
             } else {
                 Spacer(Modifier.size(24.dp))
             }
@@ -381,98 +450,149 @@ internal fun FileBrowserContent(
     state: FileBrowserUiState,
     options: FileBrowserOptions,
     contentPadding: PaddingValues,
+    listState: LazyListState,
+    onRetry: () -> Unit,
     onEntryClick: (FileEntry) -> Unit,
     onEntryLongClick: (FileEntry) -> Unit,
     onEntryProperties: (FileEntry) -> Unit,
     onBreadcrumbClick: (FileEntry) -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(contentPadding),
-    ) {
-        if (state.isLoading || state.isBusy || state.search?.isSearching == true) {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
-        }
-        if (
-            state.search == null &&
-            options.showBreadcrumbs &&
-            state.breadcrumbs.size > 1
-        ) {
-            BreadcrumbBar(
-                breadcrumbs = state.breadcrumbs,
-                enabled = !state.isBusy && !state.isSelectionMode,
-                onClick = onBreadcrumbClick,
-            )
-            HorizontalDivider()
-        }
-
-        val search = state.search
-        if (search != null) {
-            SearchResults(
-                state = state,
-                options = options,
-                onEntryClick = onEntryClick,
-                onEntryLongClick = onEntryLongClick,
-                onEntryProperties = onEntryProperties,
-            )
-            return@Column
-        }
-
-        val entries = state.visibleEntries()
-        when {
-            state.isLoading && entries.isEmpty() -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            entries.isEmpty() -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = stringResource(R.string.yukifb_empty_directory),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 4.dp),
-                ) {
-                    itemsIndexed(
-                        items = entries,
-                        key = { _, entry -> entry.id.value },
-                    ) { index, entry ->
-                        FileEntryRow(
-                            entry = entry,
-                            index = index,
-                            itemCount = entries.size,
-                            selected = entry.id in state.selectedIds,
-                            selectionMode = state.isSelectionMode,
-                            enabled = !state.isBusy,
-                            options = options,
-                            onClick = { onEntryClick(entry) },
-                            onLongClick = { onEntryLongClick(entry) },
-                            onProperties = { onEntryProperties(entry) },
+    val effects = yukiFBEffectsSpec<Float>()
+    val placement = yukiFBSpatialSpec<IntOffset>()
+    val initialLoading = state.isLoading && state.entries.isEmpty() && state.search == null
+    val working = !initialLoading && (state.isLoading || state.isBusy || state.search?.isSearching == true)
+    var showProgress by remember { mutableStateOf(false) }
+    LaunchedEffect(working) {
+        if (working) delay(150)
+        showProgress = working
+    }
+    Box(Modifier.fillMaxSize().padding(contentPadding)) {
+        Column(Modifier.fillMaxSize()) {
+            if (state.error?.operation == FileBrowserOperation.LOAD) {
+                Surface(color = MaterialTheme.colorScheme.errorContainer) {
+                    Row(Modifier.fillMaxWidth().padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            stringResource(R.string.yukifb_load_failed),
+                            modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
+                            style = MaterialTheme.typography.bodyMedium,
                         )
+                        TextButton(onClick = onRetry, enabled = !state.isLoading) {
+                            Text(stringResource(R.string.yukifb_retry))
+                        }
+                    }
+                }
+            }
+            if (
+                state.search == null &&
+                options.showBreadcrumbs &&
+                state.breadcrumbs.size > 1
+            ) {
+                BreadcrumbBar(
+                    breadcrumbs = state.breadcrumbs,
+                    enabled = !state.isBusy && !state.isSelectionMode,
+                    onClick = onBreadcrumbClick,
+                )
+                HorizontalDivider()
+            }
+
+            val search = state.search
+            if (search != null) {
+                SearchResults(
+                    state = state,
+                    options = options,
+                    listState = listState,
+                    onEntryClick = onEntryClick,
+                    onEntryLongClick = onEntryLongClick,
+                    onEntryProperties = onEntryProperties,
+                )
+                return@Column
+            }
+
+            val entries = state.visibleEntries()
+            when {
+                state.isLoading && entries.isEmpty() -> {
+                    Column(
+                        Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        BrowserLoadingIndicator()
+                        Text(stringResource(state.operationLabel()), style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+
+                entries.isEmpty() && state.error?.operation == FileBrowserOperation.LOAD -> Unit
+
+                entries.isEmpty() -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = stringResource(R.string.yukifb_empty_directory),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 4.dp),
+                    ) {
+                        itemsIndexed(
+                            items = entries,
+                            key = { _, entry -> entry.id.value },
+                        ) { index, entry ->
+                            FileEntryRow(
+                                modifier = Modifier.animateItem(fadeInSpec = null, placementSpec = placement, fadeOutSpec = effects),
+                                entry = entry,
+                                index = index,
+                                itemCount = entries.size,
+                                selected = entry.id in state.selectedIds,
+                                selectionMode = state.isSelectionMode,
+                                enabled = !state.isBusy,
+                                options = options,
+                                onClick = { onEntryClick(entry) },
+                                onLongClick = { onEntryLongClick(entry) },
+                                onProperties = { onEntryProperties(entry) },
+                            )
+                        }
                     }
                 }
             }
         }
+        AnimatedVisibility(
+            visible = working && showProgress,
+            modifier = Modifier.align(Alignment.TopCenter),
+            enter = fadeIn(effects), exit = fadeOut(effects),
+        ) {
+            Surface(color = yukiFBColors.topBar) {
+                Column {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(
+                        text = stringResource(state.operationLabel()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                            .semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+            }
+        }
     }
+
 }
 
 @Composable
 private fun SearchResults(
     state: FileBrowserUiState,
     options: FileBrowserOptions,
+    listState: LazyListState,
     onEntryClick: (FileEntry) -> Unit,
     onEntryLongClick: (FileEntry) -> Unit,
     onEntryProperties: (FileEntry) -> Unit,
 ) {
     val search = state.search ?: return
+    val effects = yukiFBEffectsSpec<Float>()
+    val placement = yukiFBSpatialSpec<IntOffset>()
     val results = state.visibleSearchResults()
     when {
         search.query.isBlank() -> {
@@ -484,7 +604,7 @@ private fun SearchResults(
 
         search.isSearching && results.isEmpty() -> {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                BrowserLoadingIndicator()
             }
         }
 
@@ -508,6 +628,7 @@ private fun SearchResults(
 
         else -> {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 4.dp),
             ) {
@@ -516,6 +637,7 @@ private fun SearchResults(
                     key = { _, result -> result.entry.id.value },
                 ) { index, result ->
                     FileEntryRow(
+                        modifier = Modifier.animateItem(fadeInSpec = null, placementSpec = placement, fadeOutSpec = effects),
                         entry = result.entry,
                         index = index,
                         itemCount = results.size,
@@ -533,7 +655,7 @@ private fun SearchResults(
                     search.resultLimitReached ||
                     search.skippedDirectoryCount > 0
                 ) {
-                    item(key = "yukifb-search-status") {
+                    item(key = SearchFooterKey.Status) {
                         SearchStatus(
                             resultCount = results.size,
                             resultLimitReached = search.resultLimitReached,
@@ -607,32 +729,39 @@ private fun BreadcrumbBar(
     onClick: (FileEntry) -> Unit,
 ) {
     val scrollState = rememberScrollState()
+    val motion = LocalYukiFBMotion.current
     LaunchedEffect(breadcrumbs.map { it.id }) {
-        scrollState.animateScrollTo(scrollState.maxValue)
+        if (motion == YukiFBMotion.Full) scrollState.animateScrollTo(scrollState.maxValue)
+        else scrollState.scrollTo(scrollState.maxValue)
     }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(scrollState)
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = 8.dp)
+            .animateContentSize(yukiFBSpatialSpec()),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         breadcrumbs.forEachIndexed { index, entry ->
+            key(entry.id) {
             if (index > 0) {
                 Text(
                     text = "/",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(
-                enabled = enabled && index != breadcrumbs.lastIndex,
-                onClick = { onClick(entry) },
-            ) {
+            if (index == breadcrumbs.lastIndex) {
+                Surface(shape = MaterialTheme.shapes.small, color = yukiFBColors.selectedContainer) {
+                    Text(entry.name, Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
+                }
+            } else TextButton(enabled = enabled, onClick = { onClick(entry) }) {
                 Text(
                     text = entry.name,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
             }
         }
     }
@@ -652,6 +781,7 @@ private fun FileEntryRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onProperties: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val details = remember(entry, options, location) {
         buildList {
@@ -677,13 +807,20 @@ private fun FileEntryRow(
     ListItem(
         selected = selected,
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = options.rowMinHeight)
-            .padding(horizontal = 8.dp, vertical = 1.dp),
+            .padding(horizontal = if (expressiveYukiFB) 8.dp else 0.dp, vertical = if (expressiveYukiFB) 1.dp else 0.dp)
+            .heightIn(min = if (details.isEmpty()) options.rowMinHeight.coerceAtLeast(48.dp) else options.rowMinHeight.coerceAtLeast(64.dp)),
         enabled = enabled,
         onLongClick = onLongClick,
-        shapes = ListItemDefaults.segmentedShapes(index, itemCount),
+        verticalAlignment = Alignment.CenterVertically,
+        shapes = if (expressiveYukiFB) ListItemDefaults.shapes()
+        else ListItemDefaults.shapes(RectangleShape, RectangleShape, RectangleShape, RectangleShape, RectangleShape, RectangleShape),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+        colors = ListItemDefaults.colors(
+            containerColor = yukiFBColors.listContainer,
+            selectedContainerColor = yukiFBColors.selectedContainer,
+        ),
         leadingContent = {
             FileTypeIcon(
                 entryType = entry.type,
@@ -704,28 +841,40 @@ private fun FileEntryRow(
                     text = details,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         } else {
             null
         },
         trailingContent = {
-            if (selectionMode) {
-                Checkbox(
-                    checked = selected,
-                    onCheckedChange = { onClick() },
-                )
-            } else {
-                IconButton(onClick = onProperties) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = stringResource(R.string.yukifb_properties),
+            val effects = yukiFBEffectsSpec<Float>()
+            AnimatedContent(
+                targetState = selectionMode, label = "entry selection control",
+                transitionSpec = { fadeIn(effects).togetherWith(fadeOut(effects)) },
+            ) { choosing ->
+                if (choosing) {
+                    Checkbox(
+                        checked = selected,
+                        onCheckedChange = null,
+                        enabled = enabled,
                     )
+                } else {
+                    IconButton(onClick = onProperties, enabled = enabled && !selectionMode) {
+                        BrowserIcon(
+                            Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.yukifb_properties),
+                        )
+                    }
                 }
             }
         },
     )
+    if (!expressiveYukiFB && index < itemCount - 1) {
+        Box(Modifier.fillMaxWidth().background(yukiFBColors.listContainer)) {
+            HorizontalDivider(Modifier.padding(start = 64.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+        }
+    }
 }
 
 @Composable
@@ -787,13 +936,13 @@ private fun FileTypeIcon(
         -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Surface(
-        modifier = Modifier.size(40.dp),
+        modifier = Modifier.size(if (expressiveYukiFB) 36.dp else 32.dp),
         shape = MaterialTheme.shapes.medium,
-        color = containerColor,
-        contentColor = contentColor,
+        color = if (expressiveYukiFB) containerColor else Color.Transparent,
+        contentColor = if (expressiveYukiFB) contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(
+            BrowserIcon(
                 modifier = Modifier.size(22.dp),
                 imageVector = icon,
                 contentDescription = stringResource(entryType.resourceId()),
@@ -821,6 +970,10 @@ internal fun SelectionBottomBar(
 ) {
     var moreExpanded by remember { mutableStateOf(false) }
     FlexibleBottomAppBar(
+        modifier = Modifier
+            .padding(horizontal = if (expressiveYukiFB) 8.dp else 0.dp)
+            .clip(if (expressiveYukiFB) MaterialTheme.shapes.large else RectangleShape),
+        containerColor = yukiFBColors.bottomBar,
         contentPadding = PaddingValues(horizontal = 4.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
@@ -879,57 +1032,57 @@ internal fun SelectionBottomBar(
                 expanded = moreExpanded,
                 onDismissRequest = { moreExpanded = false },
             ) {
-                        if (
-                            state.capabilities.canRename &&
-                            selectedEntries.size == 1
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.yukifb_rename)) },
-                                onClick = {
-                                    moreExpanded = false
-                                    onRename(selectedEntries.single())
-                                },
-                            )
-                        }
-                        if (state.capabilities.canEditUnixMetadata) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(stringResource(R.string.yukifb_edit_metadata))
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Settings, contentDescription = null)
-                                },
-                                onClick = {
-                                    moreExpanded = false
-                                    onMetadata()
-                                },
-                            )
-                        }
-                        if (
-                            state.capabilities.canCreateHardLinks &&
-                            selectedEntries.size == 1 &&
-                            !selectedEntries.single().isDirectory
-                        ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(stringResource(R.string.yukifb_create_hard_link))
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Link, contentDescription = null)
-                                },
-                                onClick = {
-                                    moreExpanded = false
-                                    onHardLink()
-                                },
-                            )
-                        }
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.yukifb_properties)) },
-                            onClick = {
-                                moreExpanded = false
-                                onProperties()
-                            },
-                        )
+                if (
+                    state.capabilities.canRename &&
+                    selectedEntries.size == 1
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.yukifb_rename)) },
+                        onClick = {
+                            moreExpanded = false
+                            onRename(selectedEntries.single())
+                        },
+                    )
+                }
+                if (state.capabilities.canEditUnixMetadata) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(stringResource(R.string.yukifb_edit_metadata))
+                        },
+                        leadingIcon = {
+                            BrowserIcon(Icons.Default.Settings, contentDescription = null)
+                        },
+                        onClick = {
+                            moreExpanded = false
+                            onMetadata()
+                        },
+                    )
+                }
+                if (
+                    state.capabilities.canCreateHardLinks &&
+                    selectedEntries.size == 1 &&
+                    !selectedEntries.single().isDirectory
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(stringResource(R.string.yukifb_create_hard_link))
+                        },
+                        leadingIcon = {
+                            BrowserIcon(Icons.Default.Link, contentDescription = null)
+                        },
+                        onClick = {
+                            moreExpanded = false
+                            onHardLink()
+                        },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.yukifb_properties)) },
+                    onClick = {
+                        moreExpanded = false
+                        onProperties()
+                    },
+                )
             }
         }
     }
@@ -950,7 +1103,7 @@ private fun BottomAction(
         onClick = onClick,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, contentDescription = null)
+            BrowserIcon(icon, contentDescription = null)
             Text(
                 text = label,
                 maxLines = 1,
@@ -985,7 +1138,8 @@ internal fun ClipboardBottomBar(
             stringResource(R.string.yukifb_clipboard_hard_link)
         }
     }
-    Surface(tonalElevation = 3.dp) {
+    Surface(modifier = Modifier.navigationBarsPadding(), color = yukiFBColors.bottomBar,
+        shape = if (expressiveYukiFB) MaterialTheme.shapes.large else RectangleShape) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1000,12 +1154,12 @@ internal fun ClipboardBottomBar(
                 overflow = TextOverflow.Ellipsis,
             )
             TextButton(onClick = onClear) {
-                Icon(
+                BrowserIcon(
                     Icons.Default.Cancel,
                     contentDescription = stringResource(R.string.yukifb_cancel_clipboard),
                 )
             }
-            TextButton(
+            FilledTonalButton(
                 enabled = enabled,
                 onClick = onPaste,
             ) {
@@ -1025,21 +1179,48 @@ internal fun CreationButton(
     onCreateDirectory: () -> Unit,
     onCreateSymbolicLink: () -> Unit,
     onImport: () -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
 ) {
     val hasActions = capabilities.canCreateEntries ||
         capabilities.canCreateSymbolicLinks ||
         importEnabled
-    if (!hasActions || !enabled) return
+    if (!hasActions) return
 
-    var expanded by remember { mutableStateOf(false) }
+    if (!expressiveYukiFB) {
+        Box {
+            FloatingActionButton(onClick = { if (enabled) onExpandedChange(!expanded) }) {
+                BrowserIcon(Icons.Default.Add, stringResource(R.string.yukifb_create))
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
+                @Composable
+                fun item(label: Int, icon: ImageVector, action: () -> Unit) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(label)) },
+                        leadingIcon = { BrowserIcon(icon, null) },
+                        enabled = enabled,
+                        onClick = { onExpandedChange(false); action() },
+                    )
+                }
+                if (capabilities.canCreateEntries) {
+                    item(R.string.yukifb_new_file, Icons.Default.Description, onCreateFile)
+                    item(R.string.yukifb_new_directory, Icons.Default.CreateNewFolder, onCreateDirectory)
+                }
+                if (capabilities.canCreateSymbolicLinks) item(R.string.yukifb_new_symbolic_link, Icons.Default.Link, onCreateSymbolicLink)
+                if (importEnabled) item(R.string.yukifb_import, Icons.Default.UploadFile, onImport)
+            }
+        }
+        return
+    }
+
     FloatingActionButtonMenu(
         expanded = expanded,
         button = {
             ToggleFloatingActionButton(
                 checked = expanded,
-                onCheckedChange = { expanded = it },
+                onCheckedChange = { if (enabled) onExpandedChange(it) },
             ) {
-                Icon(
+                BrowserIcon(
                     imageVector = if (expanded) Icons.Default.Close else Icons.Default.Add,
                     contentDescription = stringResource(R.string.yukifb_create),
                 )
@@ -1050,20 +1231,20 @@ internal fun CreationButton(
                 FloatingActionButtonMenuItem(
                     text = { Text(stringResource(R.string.yukifb_new_file)) },
                     icon = {
-                        Icon(Icons.Default.Description, contentDescription = null)
+                        BrowserIcon(Icons.Default.Description, contentDescription = null)
                     },
                     onClick = {
-                        expanded = false
+                        onExpandedChange(false)
                         onCreateFile()
                     },
                 )
                 FloatingActionButtonMenuItem(
                     text = { Text(stringResource(R.string.yukifb_new_directory)) },
                     icon = {
-                        Icon(Icons.Default.CreateNewFolder, contentDescription = null)
+                        BrowserIcon(Icons.Default.CreateNewFolder, contentDescription = null)
                     },
                     onClick = {
-                        expanded = false
+                        onExpandedChange(false)
                         onCreateDirectory()
                     },
                 )
@@ -1072,10 +1253,10 @@ internal fun CreationButton(
                 FloatingActionButtonMenuItem(
                     text = { Text(stringResource(R.string.yukifb_new_symbolic_link)) },
                     icon = {
-                        Icon(Icons.Default.Link, contentDescription = null)
+                        BrowserIcon(Icons.Default.Link, contentDescription = null)
                     },
                     onClick = {
-                        expanded = false
+                        onExpandedChange(false)
                         onCreateSymbolicLink()
                     },
                 )
@@ -1084,13 +1265,28 @@ internal fun CreationButton(
                 FloatingActionButtonMenuItem(
                     text = { Text(stringResource(R.string.yukifb_import)) },
                     icon = {
-                        Icon(Icons.Default.UploadFile, contentDescription = null)
+                        BrowserIcon(Icons.Default.UploadFile, contentDescription = null)
                     },
                     onClick = {
-                        expanded = false
+                        onExpandedChange(false)
                         onImport()
                     },
                 )
             }
+    }
+}
+
+private enum class SearchFooterKey { Status }
+
+private fun FileBrowserUiState.operationLabel(): Int = when {
+    search?.isSearching == true -> R.string.yukifb_searching
+    else -> when (activeOperation) {
+        FileBrowserOperation.CREATE, FileBrowserOperation.CREATE_LINK -> R.string.yukifb_creating
+        FileBrowserOperation.RENAME -> R.string.yukifb_renaming
+        FileBrowserOperation.DELETE -> R.string.yukifb_deleting
+        FileBrowserOperation.COPY -> R.string.yukifb_copying
+        FileBrowserOperation.MOVE -> R.string.yukifb_moving
+        FileBrowserOperation.UPDATE_METADATA -> R.string.yukifb_updating_metadata
+        else -> R.string.yukifb_loading
     }
 }

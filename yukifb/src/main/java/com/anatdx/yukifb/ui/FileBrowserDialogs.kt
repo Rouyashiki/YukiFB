@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -38,7 +38,7 @@ internal fun NameInputDialog(
 ) {
     var value by remember(initialValue) { mutableStateOf(initialValue) }
     val isValid = value.trim().isNotEmpty()
-    AlertDialog(
+    BrowserAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -82,7 +82,7 @@ internal fun SymbolicLinkDialog(
     var name by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("") }
     val isValid = name.trim().isNotEmpty() && target.isNotEmpty()
-    AlertDialog(
+    BrowserAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.yukifb_new_symbolic_link)) },
         text = {
@@ -125,7 +125,7 @@ internal fun DeleteConfirmationDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    AlertDialog(
+    BrowserAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.yukifb_confirm_delete_title)) },
         text = {
@@ -188,7 +188,7 @@ internal fun UnixMetadataDialog(
     val hasChange = permissions.isNotBlank() || uid.isNotBlank() || gid.isNotBlank()
     val isValid = hasChange && permissionsValid && uidValid && gidValid
 
-    AlertDialog(
+    BrowserAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.yukifb_edit_metadata)) },
         text = {
@@ -267,7 +267,7 @@ internal fun PropertiesDialog(
     entries: List<FileEntry>,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    BrowserAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.yukifb_properties)) },
         text = {
@@ -351,7 +351,7 @@ private fun PropertyRow(label: String, value: String) {
             .padding(vertical = 8.dp),
     ) {
         Text(label)
-        Text(value)
+        SelectionContainer { Text(value) }
     }
     HorizontalDivider()
 }

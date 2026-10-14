@@ -107,4 +107,13 @@
     <string name="yukifb_editor_reopen_encoding_title">使用指定编码重新打开</string>
     <string name="yukifb_editor_reopen_encoding_warning">重新打开将放弃未保存的文本和格式更改。</string>
     <string name="yukifb_editor_reopen">重新打开</string>
+    <string name="yukifb_load_failed">无法打开文件夹</string>
+    <string name="yukifb_retry">重试</string>
+    <string name="yukifb_searching">正在搜索文件夹…</string>
+    <string name="yukifb_creating">正在创建…</string>
+    <string name="yukifb_renaming">正在重命名…</string>
+    <string name="yukifb_deleting">正在删除…</string>
+    <string name="yukifb_copying">正在复制…</string>
+    <string name="yukifb_moving">正在移动…</string>
+    <string name="yukifb_updating_metadata">正在更新权限与属主…</string>
 </resources>

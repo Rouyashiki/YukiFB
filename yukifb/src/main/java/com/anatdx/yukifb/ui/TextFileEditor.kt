@@ -1,5 +1,9 @@
 package com.anatdx.yukifb.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -26,13 +30,11 @@ import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -41,6 +43,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -141,12 +144,43 @@ fun TextFileEditor(
     onEncodingChange: (TextFileEncoding) -> Unit = {},
     onReopenWithEncoding: ((TextFileEncoding) -> Unit)? = null,
 ) {
+    TextFileEditor(
+        fileName = fileName, state = state, onSave = onSave, onClose = onClose,
+        confirmClose = true, modifier = modifier, isSaving = isSaving,
+        readOnly = readOnly, showLineNumbers = showLineNumbers,
+        availableEncodings = availableEncodings, availableLineEndings = availableLineEndings,
+        onEncodingChange = onEncodingChange, onReopenWithEncoding = onReopenWithEncoding,
+    )
+}
+
+/**
+ * Editor with an explicit close policy. Set [confirmClose] to false only when
+ * [onClose] routes both toolbar and system back through a host-owned dirty guard.
+ */
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+@JvmName("TextFileEditorWithClosePolicy")
+fun TextFileEditor(
+    fileName: String,
+    state: TextFileEditorState,
+    onSave: (TextFileSaveRequest) -> Unit,
+    onClose: () -> Unit,
+    confirmClose: Boolean,
+    modifier: Modifier = Modifier,
+    isSaving: Boolean = false,
+    readOnly: Boolean = false,
+    showLineNumbers: Boolean = true,
+    availableEncodings: List<TextFileEncoding> = TextFileEncoding.entries,
+    availableLineEndings: List<TextLineEnding> = TextLineEnding.entries,
+    onEncodingChange: (TextFileEncoding) -> Unit = {},
+    onReopenWithEncoding: ((TextFileEncoding) -> Unit)? = null,
+) {
     var showDiscardConfirmation by remember { mutableStateOf(false) }
     val currentText = state.text
     val dirty = state.hasUnsavedChanges
 
     fun requestClose() {
-        if (dirty && !readOnly) {
+        if (confirmClose && dirty && !readOnly) {
             showDiscardConfirmation = true
         } else {
             onClose()
@@ -155,6 +189,7 @@ fun TextFileEditor(
 
     Scaffold(
         modifier = modifier,
+        containerColor = yukiFBColors.background,
         topBar = {
             TextEditorTopBar(
                 fileName = fileName,
@@ -202,7 +237,7 @@ fun TextFileEditor(
     }
 
     if (showDiscardConfirmation) {
-        AlertDialog(
+        BrowserAlertDialog(
             onDismissRequest = { showDiscardConfirmation = false },
             title = { Text(stringResource(R.string.yukifb_editor_discard_title)) },
             text = { Text(stringResource(R.string.yukifb_editor_discard_message)) },
@@ -243,6 +278,7 @@ private fun TextEditorTopBar(
     onSave: () -> Unit,
 ) {
     TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = yukiFBColors.topBar),
         title = {
             Text(
                 text = if (dirty) "$fileName *" else fileName,
@@ -251,8 +287,8 @@ private fun TextEditorTopBar(
             )
         },
         navigationIcon = {
-            IconButton(onClick = onClose) {
-                Icon(
+            IconButton(onClick = onClose, enabled = !saving) {
+                BrowserIcon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.yukifb_close),
                 )
@@ -263,7 +299,7 @@ private fun TextEditorTopBar(
                 enabled = canUndo && !saving && !readOnly,
                 onClick = onUndo,
             ) {
-                Icon(
+                BrowserIcon(
                     Icons.AutoMirrored.Filled.Undo,
                     contentDescription = stringResource(R.string.yukifb_editor_undo),
                 )
@@ -272,7 +308,7 @@ private fun TextEditorTopBar(
                 enabled = canRedo && !saving && !readOnly,
                 onClick = onRedo,
             ) {
-                Icon(
+                BrowserIcon(
                     Icons.AutoMirrored.Filled.Redo,
                     contentDescription = stringResource(R.string.yukifb_editor_redo),
                 )
@@ -281,18 +317,21 @@ private fun TextEditorTopBar(
                 enabled = dirty && !saving && !readOnly,
                 onClick = onSave,
             ) {
-                if (saving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
-                        strokeWidth = 2.dp,
-                    )
+                val effects = yukiFBEffectsSpec<Float>()
+                AnimatedContent(
+                    targetState = saving, label = "editor save state",
+                    transitionSpec = { fadeIn(effects).togetherWith(fadeOut(effects)) },
+                ) { inProgress ->
+                if (inProgress) {
+                    BrowserLoadingIndicator(modifier = Modifier.size(24.dp))
                 } else {
-                    Icon(
-                        Icons.Default.Save,
+                    BrowserIcon(
+                        if (dirty) Icons.Default.Save else Icons.Default.Check,
                         contentDescription = stringResource(
                             R.string.yukifb_editor_save_file,
                         ),
                     )
+                }
                 }
             }
         },
@@ -320,7 +359,7 @@ private fun TextEditorBody(
 
     Surface(
         modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        color = yukiFBColors.editor,
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val gutterWidth = if (showLineNumbers) 52.dp else 0.dp
@@ -398,12 +437,13 @@ private fun TextEditorStatusBar(
 
     Surface(
         tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = yukiFBColors.bottomBar,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 40.dp)
+                .heightIn(min = 48.dp)
+                .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -424,7 +464,7 @@ private fun TextEditorStatusBar(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelMedium,
             )
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(12.dp))
             if (availableEncodings.isNotEmpty()) {
                 EditorEncodingMenu(
                     selected = encoding,
@@ -514,7 +554,7 @@ private fun EditorEncodingMenu(
                     text = { Text(option.displayName) },
                     leadingIcon = if (option == selected) {
                         {
-                            Icon(
+                            BrowserIcon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
                             )
@@ -545,7 +585,7 @@ private fun EditorEncodingMenu(
     }
 
     if (showReopenDialog && onReopen != null) {
-        AlertDialog(
+        BrowserAlertDialog(
             onDismissRequest = { showReopenDialog = false },
             title = { Text(stringResource(R.string.yukifb_editor_reopen_encoding_title)) },
             text = {
@@ -631,7 +671,7 @@ private fun <T> EditorFormatMenu(
                     text = { Text(optionLabel(option)) },
                     leadingIcon = if (option == selected) {
                         {
-                            Icon(
+                            BrowserIcon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
                             )

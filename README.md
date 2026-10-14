@@ -30,7 +30,8 @@ dependencies {
 - Conservative MIME and filename-based file icons with a host override
 - A lightweight state-hoisted plain-text editor with selectable encodings and
   automatic LF/CR/CRLF detection and conversion
-- No dependency on `File`, SAF, a navigation framework, or an application module
+- No dependency on `File`, SAF, or an application module; the headless controller
+  has no navigation dependency
 
 ## Basic usage
 
@@ -55,6 +56,47 @@ Implement `FileBrowserBackend` for listing and stat calls, then add only the
 capability interfaces supported by the backend. Recursive filename search is
 available automatically through `list`; a backend-specific search API is not
 required.
+
+## Host styling and navigation (unreleased)
+
+Place `YukiFBProvider` inside your existing `MaterialTheme`. Choose `Classic` or
+`Expressive`, override container colors independently, and optionally supply an
+icon renderer. Typography, shapes and motion specifications inherit the host theme;
+transparent containers do not dim their contents. `YukiFBMotion.Reduced` uses brief
+fades, and `None` switches immediately. The system animation setting also applies.
+
+Keep the controller and presentation above your browser/editor/viewer switch:
+
+```kotlin
+val presentation = rememberFileBrowserPresentationState(controller)
+val page by controller.state.collectAsState()
+
+YukiFBProvider(style = YukiFBStyle.Expressive) {
+    if (showBrowser) {
+        FileBrowserBackHandler(
+            state = page,
+            presentationState = presentation,
+            onAction = controller::dispatch,
+            predictiveBackEnabled = hostPredictiveBackEnabled,
+        )
+        FileBrowser(controller, presentation, onOpenFile = ::openDocument)
+    }
+}
+```
+
+Back handling is opt-in and uses the host's NavigationEvent dispatcher. Existing
+`FileBrowser` overloads do not take ownership of system back. The local handler
+closes the creation menu, clears selection, stops search, or returns to the parent;
+root back remains a host decision. Gesture previews never invoke backend work.
+Ancestor previews are bounded and non-interactive, and a committed return reloads
+the destination. Call `presentation.invalidatePreviews()` after mutations made
+outside the controller, then refresh the controller.
+
+Hosts can use `YukiFBScene` and `YukiFBBackHandler` for viewer transitions without
+exposing NavigationEvent types through their UI. Set `previewEnabled = false` when
+the action requires confirmation. If the host owns unsaved-text confirmation,
+use `TextFileEditor(..., confirmClose = false)` and send toolbar and system back to
+the same host decision. Otherwise the editor retains its own close confirmation.
 
 For text files, decode content in the host using the selected encoding and pass it
 to the optional editor. YukiFB detects and normalizes line endings for editing,

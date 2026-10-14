@@ -115,4 +115,13 @@
     <string name="yukifb_editor_reopen_encoding_title">Reopen with encoding</string>
     <string name="yukifb_editor_reopen_encoding_warning">Reopening will discard unsaved text and format changes.</string>
     <string name="yukifb_editor_reopen">Reopen</string>
+    <string name="yukifb_load_failed">Could not open the folder</string>
+    <string name="yukifb_retry">Retry</string>
+    <string name="yukifb_searching">Searching folders…</string>
+    <string name="yukifb_creating">Creating…</string>
+    <string name="yukifb_renaming">Renaming…</string>
+    <string name="yukifb_deleting">Deleting…</string>
+    <string name="yukifb_copying">Copying…</string>
+    <string name="yukifb_moving">Moving…</string>
+    <string name="yukifb_updating_metadata">Updating permissions and owner…</string>
 </resources>
