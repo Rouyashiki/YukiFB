@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.maven.publish)
 }
 
-group = "com.anatdx"
+group = "com.rouyashiki"
 version = "0.2.0"
 
 @CacheableTask
@@ -77,11 +77,11 @@ tasks.withType<Jar>().configureEach {
 mavenPublishing {
     publishToMavenCentral()
     signAllPublications()
-    coordinates("com.anatdx", "yukifb-hex", project.version.toString())
+    coordinates("com.rouyashiki", "yukifb-hex", project.version.toString())
     pom {
         name = "YukiFB Hex"
         description = "A paged, backend-agnostic binary editor for Jetpack Compose."
-        url = "https://github.com/Anatdx/YukiFB"
+        url = "https://github.com/Rouyashiki/YukiFB"
         licenses {
             license {
                 name = "The Apache License, Version 2.0"
@@ -90,9 +90,9 @@ mavenPublishing {
         }
         developers { developer { id = "anatdx"; name = "Anatdx"; url = "https://github.com/Anatdx" } }
         scm {
-            url = "https://github.com/Anatdx/YukiFB"
-            connection = "scm:git:git://github.com/Anatdx/YukiFB.git"
-            developerConnection = "scm:git:ssh://git@github.com/Anatdx/YukiFB.git"
+            url = "https://github.com/Rouyashiki/YukiFB"
+            connection = "scm:git:git://github.com/Rouyashiki/YukiFB.git"
+            developerConnection = "scm:git:ssh://git@github.com/Rouyashiki/YukiFB.git"
         }
     }
 }

@@ -1,21 +1,25 @@
 # YukiFB Hex
 
 Optional Android API 23+ library for a dense, paged binary editor. The module is
-`com.anatdx:yukifb-hex:0.2.0`, with APIs under `com.anatdx.yukifb.hex`. It depends on
+`com.rouyashiki:yukifb-hex:0.2.0`, with APIs under `com.anatdx.yukifb.hex`. It depends on
 YukiFB; applications that only need the file browser do not need this module.
-This version can be built and published to Maven Local; it has not been published
-to Maven Central.
+Both artifacts are available from Maven Central.
+
+Starting with `0.2.0`, both modules use the `com.rouyashiki` Maven group. Their
+package names remain `com.anatdx.yukifb` and `com.anatdx.yukifb.hex`.
 
 ## Integration
 
-Run `gradlew.bat publishToMavenLocal` to publish both `0.2.0` modules locally, then
-add `mavenLocal()` to the host's dependency repositories and depend on
-`com.anatdx:yukifb-hex:0.2.0`. Its metadata includes `com.anatdx:yukifb:0.2.0`.
+Add `mavenCentral()` to the host's dependency repositories and depend on
+`com.rouyashiki:yukifb-hex:0.2.0`. Its metadata includes `com.rouyashiki:yukifb:0.2.0`.
+
+For local development, run `gradlew.bat publishToMavenLocal` to publish both modules
+locally and add `mavenLocal()` to the host's dependency repositories.
 
 Build the two AARs with `gradlew.bat assemble`. A local AAR dependency does not
 carry Maven transitive dependencies: hosts must provide the Compose, Material 3,
 coroutines and NavigationEvent dependencies listed by the two Gradle modules.
-Once published, the module's Maven metadata supplies these dependencies.
+The published Maven metadata supplies these dependencies.
 
 Keep an editor session above navigation and give it a stable opaque entry ID:
 

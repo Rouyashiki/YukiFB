@@ -11,18 +11,23 @@ This checkout is version `0.2.0`, supporting Android API 23 and newer.
 
 ## Installation
 
-The published `0.1.2` release is available from Maven Central. Add `mavenCentral()`
-to your dependency repositories, then:
+**Starting with `0.2.0`, the Maven Central coordinate changes from
+`com.anatdx:yukifb` to `com.rouyashiki:yukifb`.** The optional Hex module uses
+`com.rouyashiki:yukifb-hex`. Package names remain `com.anatdx.yukifb` and
+`com.anatdx.yukifb.hex`; existing Kotlin and Java imports do not change.
+
+Version `0.2.0` is available from Maven Central. Add `mavenCentral()` to your
+dependency repositories, then:
 
 ```kotlin
 dependencies {
-    implementation("com.anatdx:yukifb:0.1.2")
+    implementation("com.rouyashiki:yukifb:0.2.0")
 }
 ```
 
 For local `0.2.0` integration, run `gradlew.bat publishToMavenLocal`, add
 `mavenLocal()` to the host's dependency repositories, and use version `0.2.0` for
-`com.anatdx:yukifb` and the optional `com.anatdx:yukifb-hex` module.
+`com.rouyashiki:yukifb` and the optional `com.rouyashiki:yukifb-hex` module.
 
 ## Design
 

@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.maven.publish)
 }
 
-group = "com.anatdx"
+group = "com.rouyashiki"
 version = "0.2.0"
 
 @CacheableTask
@@ -97,7 +97,7 @@ mavenPublishing {
     signAllPublications()
 
     coordinates(
-        groupId = "com.anatdx",
+        groupId = "com.rouyashiki",
         artifactId = "yukifb",
         version = project.version.toString(),
     )
@@ -106,7 +106,7 @@ mavenPublishing {
         name = "YukiFB"
         description = "A backend-agnostic file browser UI for Jetpack Compose."
         inceptionYear = "2026"
-        url = "https://github.com/Anatdx/YukiFB"
+        url = "https://github.com/Rouyashiki/YukiFB"
         licenses {
             license {
                 name = "The Apache License, Version 2.0"
@@ -123,9 +123,9 @@ mavenPublishing {
             }
         }
         scm {
-            url = "https://github.com/Anatdx/YukiFB"
-            connection = "scm:git:git://github.com/Anatdx/YukiFB.git"
-            developerConnection = "scm:git:ssh://git@github.com/Anatdx/YukiFB.git"
+            url = "https://github.com/Rouyashiki/YukiFB"
+            connection = "scm:git:git://github.com/Rouyashiki/YukiFB.git"
+            developerConnection = "scm:git:ssh://git@github.com/Rouyashiki/YukiFB.git"
         }
     }
 }
