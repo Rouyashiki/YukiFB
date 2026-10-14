@@ -18,3 +18,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "YukiFB"
 include(":yukifb")
+include(":yukifb-hex")

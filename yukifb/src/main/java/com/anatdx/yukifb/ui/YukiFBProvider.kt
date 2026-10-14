@@ -141,6 +141,25 @@ internal val yukiFBColors: YukiFBColors
 internal val expressiveYukiFB: Boolean
     @Composable get() = LocalYukiFBStyle.current == YukiFBStyle.Expressive
 
+/** Read-only host presentation settings shared with optional YukiFB modules. */
+object YukiFBTheme {
+    /** Resolved host container colors. */
+    val colors: YukiFBColors @Composable get() = yukiFBColors
+    /** Host presentation style. */
+    val style: YukiFBStyle @Composable get() = LocalYukiFBStyle.current
+    /** Effective motion policy, including the system animation setting. */
+    val motion: YukiFBMotion @Composable get() = LocalYukiFBMotion.current
+}
+
+/** Renders an extension-module icon through the host's YukiFB icon renderer. */
+@Composable
+fun YukiFBIcon(
+    imageVector: ImageVector,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+) = BrowserIcon(imageVector, contentDescription, modifier, tint)
+
 @Composable
 internal fun rememberSystemAnimationsEnabled(): Boolean {
     val resolver = LocalContext.current.contentResolver

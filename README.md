@@ -31,6 +31,8 @@ dependencies {
 - Conservative MIME and filename-based file icons with a host override
 - A lightweight state-hoisted plain-text editor with selectable encodings and
   automatic LF/CR/CRLF detection and conversion
+- An optional [binary editor module](yukifb-hex/README.md) with paged reads,
+  byte editing, undo across saves, search/replace and character byte mappings
 - No dependency on `File`, SAF, or an application module; the headless controller
   has no navigation dependency
 
