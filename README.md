@@ -7,18 +7,22 @@ single-column browser and supplies reusable navigation, selection, clipboard, an
 file-operation state. Your backend decides what an entry actually is: an in-memory
 CPIO node, a ZIP member, a root filesystem path, or something else.
 
-The current version is `0.1.2`, supporting Android API 23 and newer.
+This checkout is version `0.2.0`, supporting Android API 23 and newer.
 
 ## Installation
 
-YukiFB is available from Maven Central. Add `mavenCentral()` to your dependency
-repositories, then:
+The published `0.1.2` release is available from Maven Central. Add `mavenCentral()`
+to your dependency repositories, then:
 
 ```kotlin
 dependencies {
     implementation("com.anatdx:yukifb:0.1.2")
 }
 ```
+
+For local `0.2.0` integration, run `gradlew.bat publishToMavenLocal`, add
+`mavenLocal()` to the host's dependency repositories, and use version `0.2.0` for
+`com.anatdx:yukifb` and the optional `com.anatdx:yukifb-hex` module.
 
 ## Design
 

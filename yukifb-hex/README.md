@@ -1,11 +1,16 @@
 # YukiFB Hex
 
 Optional Android API 23+ library for a dense, paged binary editor. The module is
-`com.anatdx:yukifb-hex`, with APIs under `com.anatdx.yukifb.hex`. It depends on
+`com.anatdx:yukifb-hex:0.2.0`, with APIs under `com.anatdx.yukifb.hex`. It depends on
 YukiFB; applications that only need the file browser do not need this module.
-This checkout contains the implementation; the new artifact has not been published.
+This version can be built and published to Maven Local; it has not been published
+to Maven Central.
 
 ## Integration
+
+Run `gradlew.bat publishToMavenLocal` to publish both `0.2.0` modules locally, then
+add `mavenLocal()` to the host's dependency repositories and depend on
+`com.anatdx:yukifb-hex:0.2.0`. Its metadata includes `com.anatdx:yukifb:0.2.0`.
 
 Build the two AARs with `gradlew.bat assemble`. A local AAR dependency does not
 carry Maven transitive dependencies: hosts must provide the Compose, Material 3,

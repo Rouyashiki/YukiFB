@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.anatdx"
-version = "0.1.2"
+version = "0.2.0"
 
 @CacheableTask
 abstract class PrepareHexLicenseResources : DefaultTask() {
@@ -54,6 +54,7 @@ androidComponents.onVariants { variant ->
 }
 
 dependencies {
+    api(platform(libs.compose.bom))
     api(project(":yukifb"))
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
