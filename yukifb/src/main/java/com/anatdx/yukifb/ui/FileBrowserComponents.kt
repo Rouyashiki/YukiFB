@@ -777,11 +777,11 @@ private fun FileEntryRow(
     selectionMode: Boolean,
     enabled: Boolean,
     options: FileBrowserOptions,
-    location: String? = null,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onProperties: () -> Unit,
     modifier: Modifier = Modifier,
+    location: String? = null,
 ) {
     val details = remember(entry, options, location) {
         buildList {

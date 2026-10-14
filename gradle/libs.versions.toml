@@ -1,9 +1,11 @@
 [versions]
-agp = "9.3.1"
+agp = "9.4.1"
 compose-bom = "2026.09.00"
 coroutines = "1.11.0"
-kotlin = "2.4.10"
+kotlin = "2.4.21"
 material3 = "1.5.0-beta01"
+# NavigationEvent 1.2+ requires API 24; keep the library compatible with API 23.
+#noinspection GradleDependency
 navigationevent = "1.1.2"
 activity = "1.13.0"
 test-runner = "1.7.0"
