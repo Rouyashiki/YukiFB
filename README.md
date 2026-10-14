@@ -7,15 +7,16 @@ single-column browser and supplies reusable navigation, selection, clipboard, an
 file-operation state. Your backend decides what an entry actually is: an in-memory
 CPIO node, a ZIP member, a root filesystem path, or something else.
 
-The project is currently an early `0.1.1`.
+The current version is `0.1.2`, supporting Android API 23 and newer.
 
 ## Installation
 
-YukiFB is published on Maven Central:
+YukiFB is available from Maven Central. Add `mavenCentral()` to your dependency
+repositories, then:
 
 ```kotlin
 dependencies {
-    implementation("com.anatdx:yukifb:0.1.1")
+    implementation("com.anatdx:yukifb:0.1.2")
 }
 ```
 
@@ -57,13 +58,17 @@ capability interfaces supported by the backend. Recursive filename search is
 available automatically through `list`; a backend-specific search API is not
 required.
 
-## Host styling and navigation (unreleased)
+## Host styling and navigation (0.1.2)
 
 Place `YukiFBProvider` inside your existing `MaterialTheme`. Choose `Classic` or
 `Expressive`, override container colors independently, and optionally supply an
 icon renderer. Typography, shapes and motion specifications inherit the host theme;
 transparent containers do not dim their contents. `YukiFBMotion.Reduced` uses brief
 fades, and `None` switches immediately. The system animation setting also applies.
+
+For a transparent host with a custom background, pass a `sceneBackground`
+composable to `YukiFBProvider` so moving pages retain the same backdrop. The
+background must cover the scene; container transparency remains independent.
 
 Keep the controller and presentation above your browser/editor/viewer switch:
 

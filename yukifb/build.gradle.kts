@@ -7,7 +7,30 @@ plugins {
 }
 
 group = "com.anatdx"
-version = "0.1.1"
+version = "0.1.2"
+
+@CacheableTask
+abstract class PrepareLicenseResources : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val licenseFile: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun copyLicense() {
+        val target = outputDirectory.file("META-INF/com.anatdx/yukifb/LICENSE").get().asFile
+        target.parentFile.mkdirs()
+        licenseFile.get().asFile.copyTo(target, overwrite = true)
+    }
+}
+
+tasks.withType<Jar>().configureEach {
+    from(rootProject.layout.projectDirectory.file("LICENSE")) {
+        into("META-INF/com.anatdx/yukifb")
+    }
+}
 
 android {
     namespace = "com.anatdx.yukifb"
@@ -30,6 +53,18 @@ android {
 
     resourcePrefix = "yukifb_"
 
+}
+
+androidComponents.onVariants { variant ->
+    val licenseResources = tasks.register<PrepareLicenseResources>(
+        "prepare${variant.name.replaceFirstChar { it.uppercaseChar() }}LicenseResources"
+    ) {
+        licenseFile.set(rootProject.layout.projectDirectory.file("LICENSE"))
+    }
+    variant.sources.resources?.addGeneratedSourceDirectory(
+        licenseResources,
+        PrepareLicenseResources::outputDirectory,
+    )
 }
 
 dependencies {
@@ -64,7 +99,7 @@ mavenPublishing {
     coordinates(
         groupId = "com.anatdx",
         artifactId = "yukifb",
-        version = "0.1.1",
+        version = project.version.toString(),
     )
 
     pom {
@@ -82,7 +117,7 @@ mavenPublishing {
         developers {
             developer {
                 id = "anatdx"
-                name = "Anan"
+                name = "Anatdx"
                 email = "an@anatdx.com"
                 url = "https://github.com/Anatdx"
             }
